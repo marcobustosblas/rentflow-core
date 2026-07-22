@@ -2,6 +2,7 @@ package com.marco.rentflow.core.application;
 
 import com.marco.rentflow.core.application.port.out.TenantNotificationGateway;
 import com.marco.rentflow.core.domain.model.RentalContract;
+import com.marco.rentflow.core.application.usecase.RentalProcessor;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
