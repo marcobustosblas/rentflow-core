@@ -1,4 +1,4 @@
-package com.marco.rentflow.core.domain.model;
+package com.marco.rentflow.core.domain.contract;
 
 import java.math.BigDecimal;
 
