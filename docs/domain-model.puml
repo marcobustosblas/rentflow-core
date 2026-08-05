@@ -1,0 +1,240 @@
+@startuml
+title Domain Model - rentflow-core (v1.0 - Domain Driven Design)
+caption Autor: Marco Orlando Bustos Blas - Proyecto: RentFlow Core (RFC)
+caption Arquitectura: Clean / Hexagonal - Core Domain Layer
+
+package "Domain Layer" {
+
+    ' ==========================================
+    ' ENUMS & VALUE OBJECTS
+    ' ==========================================
+
+    enum Role {
+        LANDLORD
+        TENANT
+        ADMIN
+    }
+
+    enum UserStatus {
+        ACTIVE
+        INACTIVE
+        BLOCKED
+    }
+
+    enum PlanType {
+        STARTER
+        PRO
+        ENTERPRISE
+    }
+
+    enum BillingCycle {
+        MONTHLY
+        YEARLY
+    }
+
+    enum SubscriptionStatus {
+        ACTIVE
+        PAST_DUE
+        CANCELLED
+    }
+
+    enum AccountType {
+        RUT
+        CORRIENTE
+        AHORRO
+    }
+
+    enum PropertyStatus {
+        AVAILABLE
+        RENTED
+        MAINTENANCE
+    }
+
+    enum ContractStatus {
+        ACTIVE
+        TERMINATED
+        EXPIRED
+    }
+
+    enum PaymentStatus {
+        PENDING
+        PAID
+        OVERDUE
+    }
+
+    ' ==========================================
+    ' USER AGGREGATE
+    ' ==========================================
+
+    class User {
+        - UUID id
+        - String email
+        - String passwordHash
+        - String phoneNumber
+        - Set<Role> roles
+        - UserStatus status
+        - LocalDateTime createdAt
+        - LocalDateTime updatedAt
+        ---
+        + void changeEmail(String newEmail)
+        + void changePassword(String newPasswordHash)
+        + void addRole(Role role)
+        + void removeRole(Role role)
+        + void activate()
+        + void deactivate()
+        + void block()
+        + boolean isLandlord()
+        + boolean isTenant()
+    }
+
+    ' ==========================================
+    ' SUBSCRIPTION ENTITY (SaaS Control)
+    ' ==========================================
+
+    class Subscription {
+        - UUID id
+        - UUID userId
+        - PlanType planType
+        - BillingCycle billingCycle
+        - SubscriptionStatus status
+        - int maxProperties
+        - int maxStorageMb
+        - LocalDateTime currentPeriodEnd
+        ---
+        + void upgradePlan(PlanType newPlan, BillingCycle cycle)
+        + void cancel()
+        + boolean canAddProperty(int currentPropertyCount)
+        + boolean isExpired()
+    }
+
+    ' ==========================================
+    ' BANK ACCOUNT ENTITY
+    ' ==========================================
+
+    class BankAccount {
+        - UUID id
+        - UUID landlordId
+        - String bankName
+        - AccountType accountType
+        - String accountNumber
+        - String holderName
+        - String holderRut
+        ---
+        + void updateAccountDetails(String bankName, AccountType accountType, String accountNumber)
+    }
+
+    ' ==========================================
+    ' PROPERTY AGGREGATE
+    ' ==========================================
+
+    class Property {
+        - UUID id
+        - UUID landlordId
+        - UUID payoutAccountId
+        - String address
+        - PropertyStatus status
+        - BigDecimal basePrice  // Money
+        - LocalDateTime createdAt
+        - LocalDateTime updatedAt
+        ---
+        + void updateAddress(String newAddress)
+        + void updateBasePrice(BigDecimal newPrice)
+        + void assignPayoutAccount(UUID newBankAccountId)
+        + void markAsRented()
+        + void markAsAvailable()
+        + void markUnderMaintenance()
+        + boolean isAvailable()
+    }
+
+    class PropertyImage {
+        - UUID id
+        - UUID propertyId
+        - String imageUrl
+        - boolean isPrimary
+        ---
+        + void setAsPrimary()
+        + void unsetPrimary()
+    }
+
+    ' ==========================================
+    ' RENTAL CONTRACT AGGREGATE (Core Financial Engine)
+    ' ==========================================
+
+    class RentalContract {
+        - UUID id
+        - UUID propertyId
+        - UUID tenantId
+        - BigDecimal rentAmount
+        - BigDecimal dailyPenalty
+        - int dueDay
+        - LocalDate startDate
+        - LocalDate endDate
+        - ContractStatus status
+        - String contractPdfUrl
+        - Integer ipcReadjustmentMonths
+        - LocalDateTime createdAt
+        ---
+        + BigDecimal calculatePaymentDue(LocalDate paymentDate)
+        + BigDecimal calculateLateFee(int daysOverdue)
+        + void readjustRentByIpc(BigDecimal ipcPercentage)
+        + void terminate()
+        + void expire()
+        + boolean isActive()
+        + boolean isOverdue(LocalDate currentDate)
+    }
+
+    ' ==========================================
+    ' PAYMENT RECORD AGGREGATE
+    ' ==========================================
+
+    class PaymentRecord {
+        - UUID id
+        - UUID contractId
+        - String idempotencyKey
+        - BigDecimal amountPaid
+        - BigDecimal lateFeeApplied
+        - LocalDate paymentDate
+        - PaymentStatus status
+        - String paymentReceiptUrl
+        - LocalDateTime createdAt
+        ---
+        + void markAsPaid(BigDecimal amount, String receiptUrl)
+        + void markAsOverdue()
+        + BigDecimal getTotalPaid()
+        + boolean isPaid()
+    }
+
+    ' ==========================================
+    ' RELACIONES Y DOMINIO
+    ' ==========================================
+
+    User "1" -- "0..1" Subscription : has active (via userId)
+    User "1" -- "*" BankAccount : owns (via landlordId)
+    User "1" -- "*" Property : owns (via landlordId)
+    Property "1" o-- "*" PropertyImage : aggregation
+    Property "1" -- "0..1" BankAccount : deposits to (via payoutAccountId)
+    Property "1" -- "*" RentalContract : associated to (via propertyId)
+    User "1" -- "*" RentalContract : rents as tenant (via tenantId)
+    RentalContract "1" *-- "*" PaymentRecord : generates composition
+
+    '' NOTAS DE DOMINIO Y REGLAS DE NEGOCIO
+    note right of RentalContract
+        REGLA FINANCIERA:
+        - calculatePaymentDue() evalúa si paymentDate > dueDay
+        - Usa BigDecimal con RoundingMode.HALF_UP
+        - Aplica dailyPenalty por cada día transcurrido
+    end note
+
+    note bottom of PaymentRecord
+        IDEMPOTENCIA:
+        - idempotencyKey garantiza que no existan cobros duplicados
+        - Soporta validación OCR vía Spring AI leyendo paymentReceiptUrl
+    end note
+
+    note top of Subscription
+        MODELO SAAS:
+        - Controla límites de propiedades (maxProperties)
+        - Controla almacenamiento en S3 (maxStorageMb)
+    end note
+}
+@enduml
