@@ -78,11 +78,13 @@ package "Domain Layer" {
         ---
         + void changeEmail(String newEmail)
         + void changePassword(String newPasswordHash)
-        + void addRole(Role role)
-        + void removeRole(Role role)
+        + void updateFullName(String newFullName)
+        + void changePhoneNumber(String newPhoneNumber)
         + void activate()
         + void deactivate()
         + void block()
+        + void addRole(Role rol)
+        + void removeRole(Role rol)
         + boolean isLandlord()
         + boolean isTenant()
     }
