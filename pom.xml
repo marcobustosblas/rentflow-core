@@ -29,6 +29,13 @@
             <version>5.10.2</version>
             <scope>test</scope>
         </dependency>
+        <!-- JUnit Jupiter Params - ¡NECESARIO PARA TESTS PARAMETRIZADOS! -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
         <!-- Mockito Core: Para crear los proxies dinámicos (muñecos de ventrílocuo) de las interfaces -->
         <dependency>
             <groupId>org.mockito</groupId>

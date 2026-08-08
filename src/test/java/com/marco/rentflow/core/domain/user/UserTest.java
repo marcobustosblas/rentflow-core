@@ -4,6 +4,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
@@ -22,7 +26,7 @@ public class UserTest {
         void shouldCreateNewUserSuccessfully() {
             User user = new User(
                     "marco@rentflow.com", "hash123",
-                    "Marco Bustos", "+56912345678", Role.LANDLORD);
+                    "Marco Bustos", "12345678-9", "+56912345678", Role.LANDLORD);
             assertNotNull(user.getId());
             assertEquals("marco@rentflow.com", user.getEmail());
             assertEquals("hash123", user.getPasswordHash());
@@ -43,7 +47,8 @@ public class UserTest {
             LocalDateTime now = LocalDateTime.now();
             Set<Role> roles = Set.of(Role.LANDLORD, Role.TENANT);
 
-            User user = new User(id, "marco@rentflow.com", "hash123", "Marco Bustos", "+56912345678", roles, UserStatus.BLOCKED, now, now);
+            User user = new User(id, "marco@rentflow.com", "hash123",
+                    "Marco Bustos", "12345678-9", "+56912345678", roles, UserStatus.BLOCKED, now, now);
 
             assertEquals(id, user.getId());
             assertEquals(UserStatus.BLOCKED, user.getStatus());
@@ -55,10 +60,10 @@ public class UserTest {
         @Test
         @DisplayName("Should throw NullPointerException when required fields in constructor are null")
         void shouldThrowExceptionWhenRequiredFieldsAreNull() {
-            assertThrows(NullPointerException.class, () -> new User(null, "hash", "Name", "123", Role.LANDLORD));
-            assertThrows(NullPointerException.class, () -> new User("email@test.com", null, "Name", "123", Role.LANDLORD));
-            assertThrows(NullPointerException.class, () -> new User("email@test.com", "hash", null, "123", Role.LANDLORD));
-            assertThrows(NullPointerException.class, () -> new User("email@test.com", "hash", "Name", "123", (Role) null));
+            assertThrows(NullPointerException.class, () -> new User(null, "hash", "Name", "12345678-9", "123", Role.LANDLORD));
+            assertThrows(NullPointerException.class, () -> new User("email@test.com", null, "Name", "12345678-9", "123", Role.LANDLORD));
+            assertThrows(NullPointerException.class, () -> new User("email@test.com", "hash", null, "12345678-9",  "123", Role.LANDLORD));
+            assertThrows(NullPointerException.class, () -> new User("email@test.com", "hash", "Name", "12345678-9", "123", (Role) null));
         }
 
         @Test
@@ -68,8 +73,29 @@ public class UserTest {
             LocalDateTime now = LocalDateTime.now();
 
             assertThrows(IllegalArgumentException.class, () ->
-                    new User(id, "email@test.com", "hash", "Name", "123", Set.of(), UserStatus.ACTIVE, now, now)
+                    new User(id, "email@test.com", "hash", "Name", "12345678-9", "123", Set.of(), UserStatus.ACTIVE, now, now)
             );
+        }
+
+        @Test
+        @DisplayName("Should throw IllegalArgumentException when rut does not match regex")
+        void shouldThrowExceptionWhenRutDoesNotMatchRegex() {
+            assertThrows(IllegalArgumentException.class, () -> {
+                new User("marco@rentflow.com", "hash123", "Marco Bustos", "123456789", "+56912345678", Role.LANDLORD);
+            });
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource // Prueba automáticamente con null y con ""
+        @ValueSource(strings = {"   ", "      "}) // Prueba con espacios en blanco
+        @DisplayName("Should allow creating a user and assign null when RUT is missing or blank")
+        void shouldAssignNullWhenRutIsBlank(String invalidRut) {
+            // invalidRut tomará los valores: null, "", "   ", "      "
+            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", invalidRut, "+56912345678", Role.LANDLORD);
+
+            // Verificamos que el dominio perdonó el espacio vacío/nulo y lo transformó en null
+            assertNull(user.getRut());
+            assertEquals("marco@rentflow.com", user.getEmail());
         }
     }
 
@@ -80,7 +106,7 @@ public class UserTest {
         @Test
         @DisplayName("Should update email successfully when valid")
         void shouldChangeEmailSuccessfully() {
-            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "+56912345678", Role.LANDLORD);
+            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "12345678-9", "+56912345678", Role.LANDLORD);
 
             user.changeEmail("nuevo@rentflow.com");
 
@@ -90,7 +116,7 @@ public class UserTest {
         @Test
         @DisplayName("Should throw exception when new email is null or empty")
         void shouldThrowExceptionWhenEmailIsInvalid() {
-            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "+56912345678", Role.LANDLORD);
+            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "12345678-9", "+56912345678", Role.LANDLORD);
 
             assertThrows(NullPointerException.class, () -> user.changeEmail(null));
             assertThrows(IllegalArgumentException.class, () -> user.changeEmail(""));
@@ -100,7 +126,7 @@ public class UserTest {
         @Test
         @DisplayName("Should update password hash successfully when valid")
         void shouldChangePasswordSuccessfully() {
-            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "+56912345678", Role.LANDLORD);
+            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "12345678-9", "+56912345678", Role.LANDLORD);
 
             user.changePassword("newhash456");
 
@@ -110,7 +136,7 @@ public class UserTest {
         @Test
         @DisplayName("Should throw exception when new password hash is null or empty")
         void shouldThrowExceptionWhenPasswordIsInvalid() {
-            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "+56912345678", Role.LANDLORD);
+            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "12345678-9", "+56912345678", Role.LANDLORD);
 
             assertThrows(NullPointerException.class, () -> user.changePassword(null));
             assertThrows(IllegalArgumentException.class, () -> user.changePassword(""));
@@ -120,7 +146,7 @@ public class UserTest {
         @Test
         @DisplayName("Should update full name successfully when valid")
         void shouldUpdateFullNameSuccessfully() {
-            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "+56912345678", Role.LANDLORD);
+            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "12345678-9", "+56912345678", Role.LANDLORD);
 
             user.updateFullName("Marco Orlando Bustos");
 
@@ -130,7 +156,7 @@ public class UserTest {
         @Test
         @DisplayName("Should throw exception when new full name is null or empty")
         void shouldThrowExceptionWhenFullNameIsInvalid() {
-            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "+56912345678", Role.LANDLORD);
+            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "12345678-9", "+56912345678", Role.LANDLORD);
 
             assertThrows(NullPointerException.class, () -> user.updateFullName(null));
             assertThrows(IllegalArgumentException.class, () -> user.updateFullName(""));
@@ -145,7 +171,7 @@ public class UserTest {
         @Test
         @DisplayName("Should transition states between ACTIVE, INACTIVE, and BLOCKED")
         void shouldTransitionStatesCorrectly() {
-            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "+56912345678", Role.LANDLORD);
+            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "12345678-9", "+56912345678", Role.LANDLORD);
 
             user.block();
             assertEquals(UserStatus.BLOCKED, user.getStatus());
@@ -165,7 +191,7 @@ public class UserTest {
         @Test
         @DisplayName("Should add new role successfully")
         void shouldAddRoleSuccessfully() {
-            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "+56912345678", Role.TENANT);
+            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "12345678-9", "+56912345678", Role.TENANT);
 
             user.addRole(Role.LANDLORD);
 
@@ -177,7 +203,7 @@ public class UserTest {
         @Test
         @DisplayName("Should remove role successfully when user has more than one role")
         void shouldRemoveRoleSuccessfully() {
-            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "+56912345678", Role.TENANT);
+            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "12345678-9", "+56912345678", Role.TENANT);
             user.addRole(Role.LANDLORD);
 
             user.removeRole(Role.TENANT);
@@ -191,7 +217,7 @@ public class UserTest {
         @DisplayName("Should throw IllegalStateException when attempting to remove the last remaining role")
         void shouldThrowExceptionWhenRemovingLastRole() {
             User user = new User("marco@rentflow.com", "hash123",
-                    "Marco Bustos", "+56912345678", Role.LANDLORD);
+                    "Marco Bustos", "12345678-9", "+56912345678", Role.LANDLORD);
 
             assertThrows(IllegalStateException.class, () -> user.removeRole(Role.LANDLORD));
         }
@@ -199,7 +225,7 @@ public class UserTest {
         @Test
         @DisplayName("Should return unmodifiable set of roles to protect encapsulation")
         void shouldReturnUnmodifiableRoleSet() {
-            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "+56912345678", Role.LANDLORD);
+            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "12345678-9", "+56912345678", Role.LANDLORD);
 
             assertThrows(UnsupportedOperationException.class, () -> user.getRoles().add(Role.ADMIN));
         }
