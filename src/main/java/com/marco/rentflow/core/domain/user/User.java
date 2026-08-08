@@ -94,6 +94,12 @@ public class User {
 
     public void removeRole(Role role) {
         Objects.requireNonNull(role, "Role cannot be null");
+
+        // Regla de Negocio: No se puede eliminar el único rol que le queda al usuario
+        if (this.roles.size() == 1 && this.roles.contains(role)) {
+            throw new IllegalStateException("Cannot remove the last remaining role of a user");
+        }
+
         this.roles.remove(role);
         touch();
     }
