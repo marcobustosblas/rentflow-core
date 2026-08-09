@@ -1,5 +1,6 @@
 package com.marco.rentflow.core.domain.property;
 
+import com.marco.rentflow.core.domain.property.exception.PropertyNotFoundException;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -76,5 +77,42 @@ public class PropertyTest {
 
         property.markAsAvailable();
         assertEquals(PropertyStatus.AVAILABLE, property.getStatus());
+    }
+
+    // Tests para cubrir el coverage
+
+    @Test
+    void shouldThrowExceptionWhenAddressIsInvalid() {
+        Property property = new Property("Av. Diego Portales 123", new BigDecimal("350000.00"), landlordId);
+
+        assertThrows(NullPointerException.class, () -> property.updateAddress(null));
+        assertThrows(IllegalArgumentException.class, () -> property.updateAddress("   "));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenRequiredFieldsAreNull() {
+        // Pruebas para el constructor inicial
+        assertThrows(NullPointerException.class, () -> new Property(null, new BigDecimal("350000"), landlordId));
+        assertThrows(NullPointerException.class, () -> new Property("Direccion", null, landlordId));
+        assertThrows(NullPointerException.class, () -> new Property("Direccion", new BigDecimal("350000"), null));
+
+        // Prueba para el constructor completo (Mapper)
+        assertThrows(NullPointerException.class, () ->
+                new Property(UUID.randomUUID(), landlordId, null, "Dir", null, PropertyStatus.AVAILABLE, java.time.LocalDateTime.now(), java.time.LocalDateTime.now())
+        );
+    }
+
+    @Test
+    void shouldCoverAllGetters() {
+        Property property = new Property("Av. Diego Portales 123", new BigDecimal("350000.00"), landlordId);
+
+        assertNotNull(property.getCreatedAt());
+        assertNotNull(property.getUpdatedAt());
+        assertEquals(landlordId, property.getLandlordId());
+    }
+
+    @Test
+    void shouldInstantiateExceptions() {
+        assertNotNull(new PropertyNotFoundException(UUID.randomUUID()));
     }
 }

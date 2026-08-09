@@ -1,5 +1,6 @@
 package com.marco.rentflow.core.domain.user;
 
+import com.marco.rentflow.core.domain.user.exception.UserNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -229,6 +230,62 @@ public class UserTest {
 
             assertThrows(UnsupportedOperationException.class, () -> user.getRoles().add(Role.ADMIN));
         }
+
+        @Test
+        @DisplayName("Should do nothing or handle gracefully when attempting to remove a role the user does not possess")
+        void shouldNotRemoveNonExistentRoleWhenSizeIsOne() {
+            User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "12345678-9", "+56912345678", Role.LANDLORD);
+
+            // El usuario tiene LANDLORD, pero intento remover TENANT.
+            // El size es 1, pero contains(TENANT) es false. No debe lanzar excepción, simplemente no hace nada.
+            user.removeRole(Role.TENANT);
+
+            assertEquals(1, user.getRoles().size());
+            assertTrue(user.isLandlord());
+        }
+    }
+
+    @Test
+    @DisplayName("Should change phone number successfully")
+    void shouldChangePhoneNumberSuccessfully() {
+        User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "12345678-9", "+56912345678", Role.LANDLORD);
+
+        user.changePhoneNumber("+56987654321"); // Asumiendo que creaste este método
+
+        assertEquals("+56987654321", user.getPhoneNumber());
+    }
+
+    @Test
+    @DisplayName("Should instantiate domain exceptions")
+    void shouldInstantiateExceptions() {
+        assertNotNull(new UserNotFoundException(UUID.randomUUID()));
+        assertNotNull(new UserNotFoundException("marco@rentflow.com"));
+    }
+
+    @Test
+    @DisplayName("Should update RUT successfully using updateRut method")
+    void shouldUpdateRutSuccessfully() {
+        User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", null, "+56912345678", Role.LANDLORD);
+        user.updateRut("18765432-1");
+        assertEquals("18765432-1", user.getRut());
+    }
+
+    @Test
+    @DisplayName("Should throw exception when updateRut receives null or empty")
+    void shouldThrowExceptionWhenUpdateRutIsInvalid() {
+        User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", null, "+56912345678", Role.LANDLORD);
+        assertThrows(NullPointerException.class, () -> user.updateRut(null));
+        assertThrows(IllegalArgumentException.class, () -> user.updateRut("   "));
+        assertThrows(IllegalArgumentException.class, () -> user.updateRut("123456789"));
+    }
+
+    @Test
+    @DisplayName("Should throw exception when phone number is null or empty")
+    void shouldThrowExceptionWhenPhoneNumberIsInvalid() {
+        User user = new User("marco@rentflow.com", "hash123", "Marco Bustos", "12345678-9", "+56912345678", Role.LANDLORD);
+        assertThrows(NullPointerException.class, () -> user.changePhoneNumber(null));
+        assertThrows(IllegalArgumentException.class, () -> user.changePhoneNumber(""));
+        assertThrows(IllegalArgumentException.class, () -> user.changePhoneNumber("   "));
     }
 
 }
