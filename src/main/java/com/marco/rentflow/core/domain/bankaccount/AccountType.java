@@ -1,7 +1,7 @@
 package com.marco.rentflow.core.domain.bankaccount;
 
 public enum AccountType {
-    RUT,
-    CORRIENTE,
-    AHORRO,
+    CUENTA_RUT,
+    CUENTA_CORRIENTE,
+    CUENTA_AHORRO,
 }

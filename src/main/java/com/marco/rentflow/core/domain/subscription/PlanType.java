@@ -2,9 +2,9 @@ package com.marco.rentflow.core.domain.subscription;
 
 public enum PlanType {
 
-    STARTED(5),     // Límite de 5 propiedades
-    PRO(20),        // Límite de 20 propiedades
-    ENTERPRISE(100); // Límite de 100 propiedades
+    PLAN_STARTED(5),     // Límite de 5 propiedades
+    PLAN_PRO(20),        // Límite de 20 propiedades
+    PLAN_ENTERPRISE(100); // Límite de 100 propiedades
 
     private final int propertyLimit;
 
