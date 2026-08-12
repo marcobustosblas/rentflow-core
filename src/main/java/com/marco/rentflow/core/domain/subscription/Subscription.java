@@ -12,7 +12,7 @@ public class Subscription {
     private SubscriptionStatus status;
     private int maxProperties;
     private int maxStorageMb;
-    private LocalDateTime currentPeriodEnd;
+    private LocalDateTime subscriptionPeriodEnd;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -43,18 +43,28 @@ public class Subscription {
         this.status = Objects.requireNonNull(status, "Status cannot be null");
         this.maxProperties = maxProperties;
         this.maxStorageMb = maxStorageMb;
-        this.currentPeriodEnd = Objects.requireNonNull(currentPeriodEnd, "CurrentPeriodEnd cannot be null");
+        this.subscriptionPeriodEnd = Objects.requireNonNull(currentPeriodEnd, "CurrentPeriodEnd cannot be null");
         this.createdAt = Objects.requireNonNull(createdAt, "CreatedAt cannot be null");
         this.updatedAt = Objects.requireNonNull(updatedAt, "UpdatedAt cannot be null");
     }
 
     // MÉTODOS Y REGLAS DE DOMINIO
 
+    public void changePlan(PlanType newPlan, BillingCycle newCycle) {
+        this.planType = Objects.requireNonNull(newPlan, "Plan type cannot be null");
+        this.billingCycle = Objects.requireNonNull(newCycle, "New billing cycle cannot be null");
+        this.maxProperties = newPlan.getPropertyLimit();
+        this.maxStorageMb = calculateStorageMb(newPlan);
+        this.subscriptionPeriodEnd = calculatePeriodEnd(newCycle, LocalDateTime.now());
+        touch();
+    }
+
     /**
-     * Evalúa si el usuario puede agregar una nueva propiedad según su cuota contratada.
+     * Evalúa si un usuario 'activo' puede agregar una nueva propiedad según su cuota contratada.
      */
     public boolean canAddProperty(int currentPropertyCount) {
-        return isActive() && currentPropertyCount < this.maxProperties;
+        return isActive() && currentPropertyCount <= this.maxProperties;
+        // Permite que sean 5 exactos con <= (con 1 cambio me ahorre problemas con el cliente)
     }
 
     /**
@@ -68,7 +78,8 @@ public class Subscription {
      * Evalúa si el periodo pagado ya venció respecto a la fecha actual.
      */
     public boolean isExpired() {
-        return LocalDateTime.now().isAfter(this.currentPeriodEnd);
+        // ¿El momento actual (AHORA) es DESPUÉS del fin del periodo contratado?
+        return LocalDateTime.now().isAfter(this.subscriptionPeriodEnd);
     }
 
     /**
@@ -76,7 +87,7 @@ public class Subscription {
      */
     public void renew() {
         this.status = SubscriptionStatus.ACTIVE;
-        this.currentPeriodEnd = calculatePeriodEnd(this.billingCycle, LocalDateTime.now());
+        this.subscriptionPeriodEnd = calculatePeriodEnd(this.billingCycle, LocalDateTime.now());
         touch();
     }
 
@@ -121,7 +132,7 @@ public class Subscription {
     public SubscriptionStatus getStatus() { return status; }
     public int getMaxProperties() { return maxProperties; }
     public int getMaxStorageMb() { return maxStorageMb; }
-    public LocalDateTime getCurrentPeriodEnd() { return currentPeriodEnd; }
+    public LocalDateTime getCurrentPeriodEnd() { return subscriptionPeriodEnd; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }
