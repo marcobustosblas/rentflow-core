@@ -1,8 +1,13 @@
 package com.marco.rentflow.core.domain.contract;
 
+import com.marco.rentflow.core.domain.common.Money;
+
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -12,9 +17,9 @@ public class RentalContract {
     private final UUID tenantId;
     private final UUID landlordId;
 
-    private BigDecimal monthlyRent; // Ingreso mensual recurrente
-    private BigDecimal depositAmount; // Mes de Garantía (pago único inicial)
-    private int paymentDueDay; // Día del mes en que vence el arriendo (ej.: 5 para el 5 de cada mes)
+    private Money monthlyRent; // Ingreso mensual recurrente
+    private Money depositAmount; // Mes de Garantía (pago único inicial)
+    private int paymentDueDay; // Día del mes en que vence el arriendo
     private LocalDate startDate;
     private LocalDate endDate;
     private ContractStatus status;
@@ -22,11 +27,17 @@ public class RentalContract {
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    // 1. Constructor para NUEVO contrato (Creación desde cero)
-    public RentalContract(UUID propertyId, UUID tenantId, UUID landlordId,
-                          BigDecimal monthlyRent, BigDecimal depositAmount,
-                          int paymentDueDay, LocalDate startDate, LocalDate endDate) {
-        this(
+
+    // FACTORY METHOD (Creación desde cero)
+
+    public static RentalContract create(UUID propertyId, UUID tenantId, UUID landlordId,
+                                        Money monthlyRent, Money depositAmount,
+                                        int paymentDueDay, LocalDate startDate, LocalDate endDate) {
+
+        validateMinimumPeriod(startDate, endDate);
+        validateDepositLimit(monthlyRent, depositAmount);
+
+        return new RentalContract(
                 UUID.randomUUID(),
                 propertyId,
                 tenantId,
@@ -42,51 +53,152 @@ public class RentalContract {
         );
     }
 
-    // 2. Constructor Completo (Reconstitución desde la Base de Datos)
+
+    // CONSTRUCTOR COMPLETO (Reconstitución BD)
+
     public RentalContract(UUID id, UUID propertyId, UUID tenantId, UUID landlordId,
-                          BigDecimal monthlyRent, BigDecimal depositAmount, int paymentDueDay,
+                          Money monthlyRent, Money depositAmount, int paymentDueDay,
                           LocalDate startDate, LocalDate endDate, ContractStatus status,
                           LocalDateTime createdAt, LocalDateTime updatedAt) {
+
         this.id = Objects.requireNonNull(id, "Contract ID cannot be null");
         this.propertyId = Objects.requireNonNull(propertyId, "Property ID cannot be null");
         this.tenantId = Objects.requireNonNull(tenantId, "Tenant ID cannot be null");
         this.landlordId = Objects.requireNonNull(landlordId, "Landlord ID cannot be null");
 
-        this.monthlyRent = validatePositiveAmount(monthlyRent, "Monthly rent must be greater than zero");
-        this.depositAmount = validateNonNegativeAmount(depositAmount, "Deposit amount cannot be negative");
+        this.monthlyRent = Objects.requireNonNull(monthlyRent, "Monthly rent cannot be null");
+        this.depositAmount = Objects.requireNonNull(depositAmount, "Deposit amount cannot be null");
+
+        validateMinimumPeriod(startDate, endDate);
+        validateDepositLimit(monthlyRent, depositAmount);
+
         this.paymentDueDay = validatePaymentDueDay(paymentDueDay);
-        this.startDate = Objects.requireNonNull(startDate, "Start date cannot be null");
-        this.endDate = Objects.requireNonNull(endDate, "End date cannot be null");
-
-        if (endDate.isBefore(startDate)) {
-            throw new IllegalArgumentException("End date cannot be before start date");
-        }
-
+        this.startDate = startDate;
+        this.endDate = endDate;
         this.status = Objects.requireNonNull(status, "Contract status cannot be null");
         this.createdAt = Objects.requireNonNull(createdAt, "CreatedAt cannot be null");
         this.updatedAt = Objects.requireNonNull(updatedAt, "UpdatedAt cannot be null");
     }
 
-    // REGLAS Y VALIDACIONES DE DOMINIO
+
+    // LÓGICA FINANCIERA Y CÁLCULOS
+
+    public LocalDate calculatePaymentDueDate(int year, int month) {
+        YearMonth yearMonth = YearMonth.of(year, month);
+        int validDay = Math.min(this.paymentDueDay, yearMonth.lengthOfMonth());
+        return LocalDate.of(year, month, validDay);
+    }
+
+    public boolean isOverdue(LocalDate paymentDate, LocalDate dueDate) {
+        return paymentDate.isAfter(dueDate);
+    }
+
+    public Money calculateLateFee(LocalDate paymentDate, LocalDate dueDate, BigDecimal dailyPenaltyRate) {
+        // step 1: Validar que ningún parámetro sea null
+        Objects.requireNonNull(paymentDate, "Payment date cannot be null");
+        Objects.requireNonNull(dueDate, "Due date cannot be null");
+        Objects.requireNonNull(dailyPenaltyRate, "Daily penalty rate cannot be null");
+        // ¿Dónde se pone dailyPenaltyRate? -> En el servicio o aplicación:
+        // BigDecimal dailyPenaltyRate = new BigDecimal("0.01"); // 1% diario
+
+        // step 2: Verificar si está atrasado
+        if (!isOverdue(paymentDate, dueDate)) {
+            // Retorna 0.00 de multa, manteniendo la moneda del contrato
+            return new Money(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP), this.monthlyRent.getCurrency());
+        }
+
+        // step 3: Calcular días de atraso:
+        long daysOverdue = ChronoUnit.DAYS.between(dueDate, paymentDate);
+
+        // step 4: Calcular multa:
+        BigDecimal daysMultiplier = BigDecimal.valueOf(daysOverdue);
+
+        BigDecimal penaltyAmount = this.monthlyRent.getAmount()
+                .multiply(dailyPenaltyRate)
+                .multiply(daysMultiplier)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        // step 5: Retornar Money con la moneda correcta
+        return new Money(penaltyAmount, this.monthlyRent.getCurrency());
+    }
+
+    public Money calculateTotalWithPenalty(LocalDate paymentDate, LocalDate dueDate, BigDecimal dailyPenaltyRate) {
+        Money lateFee = calculateLateFee(paymentDate, dueDate, dailyPenaltyRate);
+        return this.monthlyRent.add(lateFee); // Money garantiza que ambas monedas sean iguales
+    }
+
+
+    // MÉTODOS DE MUTACIÓN Y TRANSICIÓN
+
+    public void updateMonthlyRent(Money newRent) {
+        Objects.requireNonNull(newRent, "New rent cannot be null");
+        if (monthlyRent.getCurrency() != newRent.getCurrency()) {
+            throw new IllegalArgumentException("Cannot change contract currency");
+        }
+        this.monthlyRent = newRent;
+        touch();
+    }
+
+    public void extendContract(LocalDate newEndDate) {
+        Objects.requireNonNull(newEndDate, "New end date cannot be null");
+        if (newEndDate.isBefore(this.endDate)) {
+            throw new IllegalArgumentException("Renewal end date must be after current end date");
+        }
+        validateMinimumPeriod(this.startDate, newEndDate);
+        this.endDate = newEndDate;
+        if (this.status == ContractStatus.EXPIRED) {
+            this.status = ContractStatus.ACTIVE;
+        }
+        touch();
+    }
+
+    public long getRemainingMonths() {
+        if (LocalDate.now().isAfter(this.endDate)) {
+            return 0;
+        }
+        return ChronoUnit.MONTHS.between(LocalDate.now(), this.endDate);
+    }
+
+    public boolean isAboutToExpire(int monthsThreshold) {
+        return getRemainingMonths() <= monthsThreshold;
+    }
+
+    public void terminate() {
+        this.status = ContractStatus.TERMINATED;
+        touch();
+    }
+
+    public void expire() {
+        this.status = ContractStatus.EXPIRED;
+        touch();
+    }
 
     public boolean isActive() {
         return this.status == ContractStatus.ACTIVE;
     }
 
-    private static BigDecimal validatePositiveAmount(BigDecimal amount, String message) {
-        Objects.requireNonNull(amount, message);
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException(message);
+
+    // INVARIANTES PRIVADAS DE NEGOCIO
+
+    private static void validateMinimumPeriod(LocalDate start, LocalDate end) {
+        if (end.isBefore(start)) {
+            throw new IllegalArgumentException("End date cannot be before start date");
         }
-        return amount;
+        long months = ChronoUnit.MONTHS.between(start, end);
+        if (months < 1) {
+            throw new IllegalArgumentException("Contract must be for at least 1 month");
+        }
     }
 
-    private static BigDecimal validateNonNegativeAmount(BigDecimal amount, String message) {
-        Objects.requireNonNull(amount, message);
-        if (amount.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException(message);
+    // Validar que se calcule 2 meses de arriendo (mes + mes garantía)
+    private static void validateDepositLimit(Money rent, Money deposit) {
+        if (rent.getCurrency() != deposit.getCurrency()) {
+            throw new IllegalArgumentException("Rent and deposit must use the same currency");
         }
-        return amount;
+        Money twoMonthsRent = rent.multiply(BigDecimal.valueOf(2));
+        if (deposit.isGreaterThan(twoMonthsRent)) {
+            throw new IllegalArgumentException("Deposit cannot exceed 2 months of rent");
+        }
     }
 
     private static int validatePaymentDueDay(int day) {
@@ -96,8 +208,14 @@ public class RentalContract {
         return day;
     }
 
-    protected void touch() {
+    private void touch() {
         this.updatedAt = LocalDateTime.now();
+    }
+
+    @Override
+    public String toString() {
+        return String.format("{id=%s, property=%s, tenant=%s, rent=%s, status=%s}",
+                id, propertyId, tenantId, monthlyRent, status);
     }
 
     // GETTERS
@@ -105,8 +223,8 @@ public class RentalContract {
     public UUID getPropertyId() { return propertyId; }
     public UUID getTenantId() { return tenantId; }
     public UUID getLandlordId() { return landlordId; }
-    public BigDecimal getMonthlyRent() { return monthlyRent; }
-    public BigDecimal getDepositAmount() { return depositAmount; }
+    public Money getMonthlyRent() { return monthlyRent; }
+    public Money getDepositAmount() { return depositAmount; }
     public int getPaymentDueDay() { return paymentDueDay; }
     public LocalDate getStartDate() { return startDate; }
     public LocalDate getEndDate() { return endDate; }
