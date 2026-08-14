@@ -127,7 +127,8 @@ class RentalContractTest {
             RentalContract contract = RentalContract.create(
                     propertyId, tenantId, landlordId,
                     standardRent, standardDeposit,
-                    dueDay, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31)
+                    dueDay, LocalDate.of(2026, 1, 1),
+                    LocalDate.of(2026, 12, 31)
             );
 
             LocalDate calculatedDueDate = contract.calculatePaymentDueDate(year, month);
@@ -140,7 +141,9 @@ class RentalContractTest {
             RentalContract contract = RentalContract.create(
                     propertyId, tenantId, landlordId,
                     standardRent, standardDeposit,
-                    5, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31)
+                    5,
+                    LocalDate.of(2026, 1, 1),
+                    LocalDate.of(2026, 12, 31)
             );
 
             LocalDate dueDate = LocalDate.of(2026, 3, 5);
@@ -161,7 +164,9 @@ class RentalContractTest {
             RentalContract contract = RentalContract.create(
                     propertyId, tenantId, landlordId,
                     standardRent, standardDeposit,
-                    5, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31)
+                    5,
+                    LocalDate.of(2026, 1, 1),
+                    LocalDate.of(2026, 12, 31)
             );
 
             LocalDate dueDate = LocalDate.of(2026, 3, 5);
@@ -315,4 +320,80 @@ class RentalContractTest {
             );
         }
     }
+
+    @Nested
+    @DisplayName("IPC Readjustment Tests")
+    class IpcReadjustmentTests {
+
+        @Test
+        @DisplayName("Should readjust rent correctly by IPC and update last readjustment date")
+        void shouldReadjustRentCorrectly() {
+            RentalContract contract = RentalContract.create(
+                    propertyId, tenantId, landlordId,
+                    standardRent, standardDeposit,
+                    5,
+                    LocalDate.of(2026, 1, 1),
+                    LocalDate.of(2026, 12, 31)
+            );
+
+            // IPC de 4.5% aplicado el 1 de Julio de 2026
+            BigDecimal ipc = new BigDecimal("4.5");
+            LocalDate readjustmentDate = LocalDate.of(2026, 7, 1);
+
+            contract.readjustRentByIpc(ipc, readjustmentDate, 6);
+
+            // 350,000 * 1.045 = 365,750
+            assertEquals(new BigDecimal("365750"), contract.getMonthlyRent().getAmount());
+            assertEquals(readjustmentDate, contract.getLastReadjustmentDate());
+        }
+
+        @Test
+        @DisplayName("Should throw exception when applying readjustment before minimum months passed")
+        void shouldThrowExceptionWhenReadjustingTooSoon() {
+            RentalContract contract = RentalContract.create(
+                    propertyId, tenantId, landlordId,
+                    standardRent, standardDeposit,
+                    5,
+                    LocalDate.of(2026, 1, 1),
+                    LocalDate.of(2027, 12, 31)
+            );
+
+            BigDecimal ipc = new BigDecimal("4.5");
+            LocalDate firstReadjustment = LocalDate.of(2026, 7, 1);
+
+            // Primer reajuste exitoso (pactado cada 6 meses mínimo)
+            contract.readjustRentByIpc(ipc, firstReadjustment, 6);
+
+            // Intento de segundo reajuste solo 3 meses después (Octubre)
+            LocalDate earlyReadjustment = LocalDate.of(2026, 10, 1);
+
+            assertThrows(IllegalArgumentException.class, () ->
+                    contract.readjustRentByIpc(ipc, earlyReadjustment, 6)
+            );
+        }
+
+        @Test
+        @DisplayName("Should throw exception when IPC is zero or negative")
+        void shouldThrowExceptionWhenIpcIsInvalid() {
+            RentalContract contract = RentalContract.create(
+                    propertyId, tenantId, landlordId,
+                    standardRent, standardDeposit,
+                    5,
+                    LocalDate.of(2026, 1, 1),
+                    LocalDate.of(2026, 12, 31)
+            );
+
+            //LocalDate date = LocalDate.of(2026, 6, 1);
+            LocalDate date = LocalDate.now();
+
+            assertThrows(IllegalArgumentException.class, () ->
+                    contract.readjustRentByIpc(BigDecimal.ZERO, date, 6)
+            );
+
+            assertThrows(IllegalArgumentException.class, () ->
+                    contract.readjustRentByIpc(new BigDecimal("-1.5"), date, 6)
+            );
+        }
+    }
+
 }

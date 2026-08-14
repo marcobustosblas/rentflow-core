@@ -26,6 +26,7 @@ public class RentalContract {
 
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDate lastReadjustmentDate;
 
 
     // FACTORY METHOD (Creación desde cero)
@@ -49,7 +50,8 @@ public class RentalContract {
                 endDate,
                 ContractStatus.ACTIVE,
                 LocalDateTime.now(),
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                null
         );
     }
 
@@ -59,7 +61,7 @@ public class RentalContract {
     public RentalContract(UUID id, UUID propertyId, UUID tenantId, UUID landlordId,
                           Money monthlyRent, Money depositAmount, int paymentDueDay,
                           LocalDate startDate, LocalDate endDate, ContractStatus status,
-                          LocalDateTime createdAt, LocalDateTime updatedAt) {
+                          LocalDateTime createdAt, LocalDateTime updatedAt, LocalDate lastReadjustmentDate) {
 
         this.id = Objects.requireNonNull(id, "Contract ID cannot be null");
         this.propertyId = Objects.requireNonNull(propertyId, "Property ID cannot be null");
@@ -78,6 +80,7 @@ public class RentalContract {
         this.status = Objects.requireNonNull(status, "Contract status cannot be null");
         this.createdAt = Objects.requireNonNull(createdAt, "CreatedAt cannot be null");
         this.updatedAt = Objects.requireNonNull(updatedAt, "UpdatedAt cannot be null");
+        this.lastReadjustmentDate = lastReadjustmentDate;
     }
 
 
@@ -206,6 +209,48 @@ public class RentalContract {
             throw new IllegalArgumentException("Payment due day must be between 1 and 31");
         }
         return day;
+    }
+
+    // Calculate IPC
+
+    public void readjustRentByIpc(BigDecimal ipcPercentage, LocalDate readjustmentDate, int minMonthsBetweenAdjustments) {
+        Objects.requireNonNull(ipcPercentage, "IPC percentage cannot be null");
+        Objects.requireNonNull(readjustmentDate, "Readjustment date cannot be null");
+
+        if (ipcPercentage.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("IPC percentage must be greater than zero");
+        }
+        if (readjustmentDate.isBefore(this.startDate)) {
+            throw new IllegalArgumentException("Readjustment date cannot be before contract start");
+        }
+        if (readjustmentDate.isAfter(this.endDate)) {
+            throw new IllegalArgumentException("Readjustment date cannot be after contract end");
+        }
+
+        // Aquí uso la memoria y la variable flexible
+        if (this.lastReadjustmentDate != null) {
+            long monthsBetween = ChronoUnit.MONTHS.between(lastReadjustmentDate, readjustmentDate);
+            if (monthsBetween < minMonthsBetweenAdjustments) {
+                throw new IllegalArgumentException(
+                        "Readjustment can only be applied every " + minMonthsBetweenAdjustments + " months minimum"
+                );
+            }
+        }
+
+        BigDecimal valuePercentage = ipcPercentage.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
+        BigDecimal factor = BigDecimal.ONE.add(valuePercentage);
+
+        BigDecimal newAmount = this.monthlyRent.getAmount()
+                .multiply(factor)
+                .setScale(0, RoundingMode.HALF_UP);
+
+        this.monthlyRent = new Money(newAmount, this.monthlyRent.getCurrency());
+        this.lastReadjustmentDate = readjustmentDate; // Actualizo la memoria
+        touch();
+    }
+
+    public LocalDate getLastReadjustmentDate() {
+        return lastReadjustmentDate;
     }
 
     private void touch() {
