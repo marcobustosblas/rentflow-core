@@ -78,7 +78,7 @@ public class PaymentRecord {
 
     // MÉTODOS DE NEGOCIO Y TRANSICIÓN
 
-    public void paymentRegister(Money amountPaid,
+    public void registerPayment(Money amountPaid,
                                 LocalDate actualPaymentDate,
                                 Money lateFee,
                                 String transactionRef,
@@ -171,3 +171,12 @@ public class PaymentRecord {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
 }
+
+/**
+ * public void registerPayment(Money amountPaid,
+ *                                 LocalDate actualPaymentDate,
+ *                                 Money lateFee,
+ *                                 String transactionRef,
+ *                                 String receiptUrl) {...}
+ *    LocalDate actualPaymentDate -> ES la fecha del pago real
+ */

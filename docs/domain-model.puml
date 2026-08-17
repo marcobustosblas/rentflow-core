@@ -206,7 +206,7 @@ package "Domain Layer" {
         - LocalDateTime createdAt
         - LocalDateTime updatedAt
         ---
-        + void paymentRegister()
+        + void registerPayment()
         + void markAsOverdue()
         + void cancel()
         + boolean isPaid()
