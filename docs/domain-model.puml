@@ -192,18 +192,28 @@ package "Domain Layer" {
     class PaymentRecord {
         - UUID id
         - UUID contractId
+        - UUID tenantId
         - String idempotencyKey
-        - BigDecimal amountPaid
-        - BigDecimal lateFeeApplied
+        - LocalDate dueDate
         - LocalDate paymentDate
+        - BigDecimal amountPaid
+        - Money expectedAmount
+        - Money paidAmount
+        - Money lateFeeApplied
         - PaymentStatus status
+        - String transactionReference
         - String paymentReceiptUrl
         - LocalDateTime createdAt
+        - LocalDateTime updatedAt
         ---
-        + void markAsPaid(BigDecimal amount, String receiptUrl)
+        + void registerPayment()
         + void markAsOverdue()
-        + BigDecimal getTotalPaid()
+        + void cancel()
         + boolean isPaid()
+        + boolean isOverdue()
+        + boolean isPending()
+        + Money getTotalPaid()
+        + Money getTotalExpected()
     }
 
     ' ==========================================
