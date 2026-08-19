@@ -11,6 +11,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -158,6 +159,24 @@ public class PaymentRecordTest {
                 assertEquals(localStandardRent.getAmount().add(expectedLateFee), payment.getTotalExpected().getAmount());
             }
         }
+
+        @Test
+        @DisplayName("Should NOT mark as overdue if payment is not pending or date is not past due")
+        void shouldNotMarkAsOverdueIfPaidOrNotPastDue() {
+            PaymentRecord payment = PaymentRecord.createPending(
+                    contractId, tenantId, dueDate, rentAmount, idempotencyKey
+            );
+
+            // 1: Intento marcarlo atrasado el mismo día de vencimiento (no debe cambiar)
+            payment.markAsOverdue(dueDate);
+            assertEquals(PaymentStatus.PENDING, payment.getStatus());
+
+            // 2: Lo pago, y luego intento marcarlo como atrasado (no debe cambiar)
+            payment.registerPayment(rentAmount, dueDate, null, "REF", "url");
+            payment.markAsOverdue(dueDate.plusDays(5)); // Han pasado 5 días, pero ya está pagado
+
+            assertEquals(PaymentStatus.PAID, payment.getStatus()); // Sigue pagado
+        }
     }
 
     @Nested
@@ -209,7 +228,89 @@ public class PaymentRecordTest {
             // El dueño intenta cancelarlo mágicamente fraudulentamente
             assertThrows(IllegalStateException.class, payment::cancel);
         }
+    }
 
+    // Test para pasar el coverage
+    @Nested
+    @DisplayName("Reconstitution, Getters and Edge Cases (Coverage)")
+    class ReconstitutionAndEdgeCasesTests {
+
+        @Test
+        @DisplayName("Should reconstitute payment from full constructor and test all getters")
+        void shouldReconstituteAndTestGetters() {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDate payDate = LocalDate.now();
+
+            PaymentRecord payment = new PaymentRecord(
+                    UUID.randomUUID(), contractId, tenantId, idempotencyKey,
+                    dueDate, payDate, rentAmount, rentAmount,
+                    new Money(BigDecimal.ZERO, Currency.CLP),
+                    PaymentStatus.PAID, "REF-123", "http://receipt.com",
+                    now, now
+            );
+
+            assertNotNull(payment.getId());
+            assertEquals(contractId, payment.getContractId());
+            assertEquals(tenantId, payment.getTenantId());
+            assertEquals(idempotencyKey, payment.getIdempotencyKey());
+            assertEquals(dueDate, payment.getDueDate());
+            assertEquals(payDate, payment.getPaymentDate());
+            assertEquals(rentAmount, payment.getExpectedAmount());
+            assertEquals(rentAmount, payment.getPaidAmount());
+            assertNotNull(payment.getLateFeeApplied());
+            assertEquals(PaymentStatus.PAID, payment.getStatus());
+            assertEquals("REF-123", payment.getTransactionReference());
+            assertEquals("http://receipt.com", payment.getPaymentReceiptUrl());
+            assertEquals(now, payment.getCreatedAt());
+            assertEquals(now, payment.getUpdatedAt());
+        }
+
+        @Test
+        @DisplayName("Should cancel a pending payment successfully")
+        void shouldCancelPendingPayment() {
+            PaymentRecord payment = PaymentRecord.createPending(
+                    contractId, tenantId, dueDate, rentAmount, idempotencyKey
+            );
+
+            payment.cancel();
+            assertEquals(PaymentStatus.CANCELLED, payment.getStatus());
+        }
+
+        @Test
+        @DisplayName("getTotalPaid should return zero when status is not PAID")
+        void shouldReturnZeroTotalPaidWhenNotPaid() {
+            PaymentRecord payment = PaymentRecord.createPending(
+                    contractId, tenantId, dueDate, rentAmount, idempotencyKey
+            );
+
+            assertEquals(BigDecimal.ZERO, payment.getTotalPaid().getAmount());
+        }
+    }
+
+    @Nested
+    @DisplayName("Status Query Methods Coverage")
+    class StatusQueryMethodsTests {
+
+        @Test
+        @DisplayName("Should correctly return boolean values for all status queries")
+        void shouldReturnCorrectBooleanForStatusQueries() {
+            // 1. Estado PENDING (Nace pendiente)
+            PaymentRecord payment = PaymentRecord.createPending(
+                    contractId, tenantId, dueDate, rentAmount, idempotencyKey
+            );
+            assertTrue(payment.isPending());
+            assertFalse(payment.isPaid());
+            assertFalse(payment.isOverdue());
+
+            // 2. Lo cambio a OVERDUE para evaluar los casos contrarios
+            LocalDate pastDate = dueDate.plusDays(5);
+            payment.markAsOverdue(pastDate);
+
+            // JaCoCo ahora ve la rama FALSE de isPending
+            assertFalse(payment.isPending());
+            assertFalse(payment.isPaid());
+            assertTrue(payment.isOverdue());
+        }
     }
 
 }

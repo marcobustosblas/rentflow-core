@@ -138,6 +138,7 @@ public class PaymentRecord {
     public boolean isPending() {
         return this.status == PaymentStatus.PENDING;
     }
+    // es bueno evaluar los 2 caminos, boolean puede ser true o false
 
     public Money getTotalPaid() {
         if (this.status != PaymentStatus.PAID) {

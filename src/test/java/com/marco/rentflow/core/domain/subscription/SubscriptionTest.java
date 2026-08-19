@@ -16,7 +16,7 @@ public class SubscriptionTest {
     @Test
     @DisplayName("Should create active subscription with default limits for STARTED plan")
     void shouldCreateNewSubscriptionSuccessfully() {
-        Subscription subscription = new Subscription(userId, PlanType.PLAN_STARTED, BillingCycle.MONTHLY);
+        Subscription subscription = Subscription.create(userId, PlanType.PLAN_STARTED, BillingCycle.MONTHLY);
 
         assertNotNull(subscription.getId());
         assertEquals(userId, subscription.getUserId());
@@ -32,7 +32,7 @@ public class SubscriptionTest {
     @Test
     @DisplayName("Should allow adding property when current count is below max limit")
     void shouldAllowAddingPropertyWhenBelowLimit() {
-        Subscription subscription = new Subscription(userId, PlanType.PLAN_STARTED, BillingCycle.MONTHLY);
+        Subscription subscription = Subscription.create(userId, PlanType.PLAN_STARTED, BillingCycle.MONTHLY);
 
         // STARTED permite 5. Si tiene 4, aún puede agregar.
         assertTrue(subscription.canAddProperty(4));
@@ -41,7 +41,7 @@ public class SubscriptionTest {
     @Test
     @DisplayName("Should deny adding property when current count exceeds limit")
     void shouldDenyAddingPropertyWhenLimitReached() {
-        Subscription subscription = new Subscription(userId, PlanType.PLAN_STARTED, BillingCycle.MONTHLY);
+        Subscription subscription = Subscription.create(userId, PlanType.PLAN_STARTED, BillingCycle.MONTHLY);
 
         // STARTED permite 5. Si ya tiene 5, no puede agregar más.
         assertTrue(subscription.canAddProperty(5));
@@ -51,7 +51,7 @@ public class SubscriptionTest {
     @Test
     @DisplayName("Should deny adding property when subscription is not active")
     void shouldDenyAddingPropertyWhenInactiveOrCancelled() {
-        Subscription subscription = new Subscription(userId, PlanType.PLAN_STARTED, BillingCycle.MONTHLY);
+        Subscription subscription = Subscription.create(userId, PlanType.PLAN_STARTED, BillingCycle.MONTHLY);
         subscription.cancel();
 
         assertFalse(subscription.canAddProperty(2));
@@ -60,7 +60,7 @@ public class SubscriptionTest {
     @Test
     @DisplayName("Should update limits and period when changing plan (Upgrade)")
     void shouldUpdateLimitsOnPlanChange() {
-        Subscription subscription = new Subscription(userId, PlanType.PLAN_STARTED, BillingCycle.MONTHLY);
+        Subscription subscription = Subscription.create(userId, PlanType.PLAN_STARTED, BillingCycle.MONTHLY);
 
         subscription.changePlan(PlanType.PLAN_PRO, BillingCycle.YEARLY);
 
@@ -73,7 +73,7 @@ public class SubscriptionTest {
     @Test
     @DisplayName("Should transition states correctly: cancel, past due, and renew")
     void shouldHandleStateTransitions() {
-        Subscription subscription = new Subscription(userId, PlanType.PLAN_STARTED, BillingCycle.MONTHLY);
+        Subscription subscription = Subscription.create(userId, PlanType.PLAN_STARTED, BillingCycle.MONTHLY);
 
         subscription.markAsPastDue();
         assertEquals(SubscriptionStatus.PAST_DUE, subscription.getStatus());
@@ -100,6 +100,22 @@ public class SubscriptionTest {
 
         assertTrue(expiredSubscription.isExpired());
         assertFalse(expiredSubscription.isActive());
+    }
+
+    @Test
+    @DisplayName("Should create Enterprise plan and execute all date getters (Coverage)")
+    void shouldCreateEnterprisePlanAndTestRemainingGetters() {
+        Subscription enterpriseSubscription = Subscription.create(
+                userId,
+                PlanType.PLAN_ENTERPRISE,
+                BillingCycle.MONTHLY
+        );
+
+        assertEquals(50000, enterpriseSubscription.getMaxStorageMb());
+
+        assertNotNull(enterpriseSubscription.getCurrentPeriodEnd());
+        assertNotNull(enterpriseSubscription.getCreatedAt());
+        assertNotNull(enterpriseSubscription.getUpdatedAt());
     }
 
 }

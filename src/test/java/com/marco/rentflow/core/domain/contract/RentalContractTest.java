@@ -11,6 +11,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -108,6 +109,74 @@ class RentalContractTest {
                             standardRent, standardDeposit,
                             invalidDay, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31))
             );
+        }
+
+        @Test
+        @DisplayName("Should throw exception when end date is before start date")
+        void shouldThrowExceptionWhenEndDateBeforeStartDate() {
+            // Given: Fechas invertidas (end antes que start)
+            LocalDate startDate = LocalDate.of(2026, 12, 31); // 31 de Diciembre
+            LocalDate endDate = LocalDate.of(2026, 1, 1);     // 1 de Enero (¡ANTES!)
+
+            // When & Then: Debe lanzar excepción
+            assertThrows(IllegalArgumentException.class, () ->
+                    RentalContract.create(
+                            propertyId, tenantId, landlordId,
+                            standardRent, standardDeposit,
+                            5, startDate, endDate
+                    )
+            );
+        }
+
+        @Test
+        @DisplayName("Should reactivate contract when extending an expired contract")
+        void shouldReactivateWhenExtendingExpiredContract() {
+            // Given: Un contrato que ya expiró
+            LocalDate startDate = LocalDate.of(2026, 1, 1);
+            LocalDate endDate = LocalDate.of(2026, 6, 30);
+
+            RentalContract contract = RentalContract.create(
+                    propertyId, tenantId, landlordId,
+                    standardRent, standardDeposit,
+                    5, startDate, endDate
+            );
+
+            // When: Lo marcamos como EXPIRED
+            contract.expire();
+            assertEquals(ContractStatus.EXPIRED, contract.getStatus());
+
+            // When: Extendemos el contrato a una fecha posterior
+            LocalDate newEndDate = LocalDate.of(2026, 12, 31);
+            contract.extendContract(newEndDate);
+
+            // Then: El contrato debe reactivarse a ACTIVE
+            assertEquals(ContractStatus.ACTIVE, contract.getStatus());
+            assertEquals(newEndDate, contract.getEndDate());
+        }
+
+        @Test
+        @DisplayName("Should extend an active contract without changing its status")
+        void shouldExtendActiveContract() {
+            // Given: Un contrato que nace ACTIVE
+            LocalDate startDate = LocalDate.of(2026, 1, 1);
+            LocalDate endDate = LocalDate.of(2026, 6, 30);
+
+            RentalContract contract = RentalContract.create(
+                    propertyId, tenantId, landlordId,
+                    standardRent, standardDeposit,
+                    5, startDate, endDate
+            );
+
+            // Verificamos que el estado inicial es ACTIVE
+            assertEquals(ContractStatus.ACTIVE, contract.getStatus());
+
+            // When: Extendemos el contrato directamente (SIN llamar a expire() antes)
+            LocalDate newEndDate = LocalDate.of(2026, 12, 31);
+            contract.extendContract(newEndDate);
+
+            // Then: La fecha final cambia y el estado sigue siendo ACTIVE
+            assertEquals(newEndDate, contract.getEndDate());
+            assertEquals(ContractStatus.ACTIVE, contract.getStatus());
         }
     }
 
@@ -394,6 +463,85 @@ class RentalContractTest {
                     contract.readjustRentByIpc(new BigDecimal("-1.5"), date, 6)
             );
         }
+
+        @Test
+        @DisplayName("Should throw exception when readjustment date is out of contract bounds")
+        void shouldThrowExceptionWhenReadjustmentDateIsOutOfBounds() {
+            RentalContract contract = RentalContract.create(
+                    propertyId, tenantId, landlordId,
+                    standardRent, standardDeposit,
+                    5, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31)
+            );
+
+            BigDecimal ipc = new BigDecimal("4.5");
+
+            // Intento de reajuste antes de que inicie el contrato (Línea roja 223)
+            assertThrows(IllegalArgumentException.class, () ->
+                    contract.readjustRentByIpc(ipc, LocalDate.of(2025, 12, 31), 6)
+            );
+
+            // Intento de reajuste después de que terminó el contrato (Línea roja 226)
+            assertThrows(IllegalArgumentException.class, () ->
+                    contract.readjustRentByIpc(ipc, LocalDate.of(2027, 1, 1), 6)
+            );
+        }
+
+        @Test
+        @DisplayName("Should allow a second readjustment if exactly the minimum months have passed")
+        void shouldAllowSecondReadjustment() {
+            RentalContract contract = RentalContract.create(
+                    propertyId, tenantId, landlordId,
+                    standardRent, standardDeposit,
+                    5, LocalDate.of(2026, 1, 1), LocalDate.of(2027, 12, 31) // Contrato de 2 años
+            );
+
+            BigDecimal ipc = new BigDecimal("4.5");
+
+            // Primer reajuste en el mes 6
+            LocalDate firstDate = LocalDate.of(2026, 6, 1);
+            contract.readjustRentByIpc(ipc, firstDate, 6);
+
+            // Segundo reajuste exactamente 6 meses después (Cubre la rama false del if de meses mínimos)
+            LocalDate secondDate = LocalDate.of(2026, 12, 1);
+            assertDoesNotThrow(() -> contract.readjustRentByIpc(ipc, secondDate, 6));
+        }
     }
+
+    // Test para pasar el coverage en jacoco
+    @Nested
+    @DisplayName("Reconstitution and Getters Tests (Coverage)")
+    class ReconstitutionAndGettersTests {
+
+        @Test
+        @DisplayName("Should reconstitute contract from full constructor and test all getters")
+        void shouldReconstituteAndTestGetters() {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDate lastReadjustment = LocalDate.now().minusMonths(1);
+
+            RentalContract contract = new RentalContract(
+                    propertyId, propertyId, tenantId, landlordId,
+                    standardRent, standardDeposit, 5,
+                    LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
+                    ContractStatus.ACTIVE, now, now, lastReadjustment
+            );
+
+            assertNotNull(contract.getId());
+            assertEquals(propertyId, contract.getPropertyId());
+            assertEquals(tenantId, contract.getTenantId());
+            assertEquals(landlordId, contract.getLandlordId());
+            assertEquals(standardRent, contract.getMonthlyRent());
+            assertEquals(standardDeposit, contract.getDepositAmount());
+            assertEquals(5, contract.getPaymentDueDay());
+            assertEquals(LocalDate.of(2026, 1, 1), contract.getStartDate());
+            assertEquals(LocalDate.of(2026, 12, 31), contract.getEndDate());
+            assertEquals(ContractStatus.ACTIVE, contract.getStatus());
+            assertEquals(now, contract.getCreatedAt());
+            assertEquals(now, contract.getUpdatedAt());
+            assertEquals(lastReadjustment, contract.getLastReadjustmentDate());
+            assertNotNull(contract.toString()); // Cubre el método toString()
+        }
+    }
+
+
 
 }

@@ -35,7 +35,7 @@ public class RentalContract {
                                         Money monthlyRent, Money depositAmount,
                                         int paymentDueDay, LocalDate startDate, LocalDate endDate) {
 
-        validateMinimumPeriod(startDate, endDate);
+        validateRentalPeriodHasMinimumOneMonth(startDate, endDate);
         validateDepositLimit(monthlyRent, depositAmount);
 
         return new RentalContract(
@@ -71,7 +71,7 @@ public class RentalContract {
         this.monthlyRent = Objects.requireNonNull(monthlyRent, "Monthly rent cannot be null");
         this.depositAmount = Objects.requireNonNull(depositAmount, "Deposit amount cannot be null");
 
-        validateMinimumPeriod(startDate, endDate);
+        validateRentalPeriodHasMinimumOneMonth(startDate, endDate);
         validateDepositLimit(monthlyRent, depositAmount);
 
         this.paymentDueDay = validatePaymentDueDay(paymentDueDay);
@@ -147,7 +147,7 @@ public class RentalContract {
         if (newEndDate.isBefore(this.endDate)) {
             throw new IllegalArgumentException("Renewal end date must be after current end date");
         }
-        validateMinimumPeriod(this.startDate, newEndDate);
+        validateRentalPeriodHasMinimumOneMonth(this.startDate, newEndDate);
         this.endDate = newEndDate;
         if (this.status == ContractStatus.EXPIRED) {
             this.status = ContractStatus.ACTIVE;
@@ -183,7 +183,7 @@ public class RentalContract {
 
     // INVARIANTES PRIVADAS DE NEGOCIO
 
-    private static void validateMinimumPeriod(LocalDate start, LocalDate end) {
+    private static void validateRentalPeriodHasMinimumOneMonth(LocalDate start, LocalDate end) {
         if (end.isBefore(start)) {
             throw new IllegalArgumentException("End date cannot be before start date");
         }
@@ -230,7 +230,7 @@ public class RentalContract {
         // Aquí uso la memoria y la variable flexible
         if (this.lastReadjustmentDate != null) {
             long monthsBetween = ChronoUnit.MONTHS.between(lastReadjustmentDate, readjustmentDate);
-            if (monthsBetween < minMonthsBetweenAdjustments) {
+            if (monthsBetween < minMonthsBetweenAdjustments) { //[<-
                 throw new IllegalArgumentException(
                         "Readjustment can only be applied every " + minMonthsBetweenAdjustments + " months minimum"
                 );

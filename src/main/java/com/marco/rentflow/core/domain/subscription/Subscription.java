@@ -17,8 +17,8 @@ public class Subscription {
     private LocalDateTime updatedAt;
 
     // 1. Constructor para NUEVA suscripción (Registro desde 0)
-    public Subscription(UUID userId, PlanType planType, BillingCycle billingCycle) {
-        this(
+    public static Subscription create(UUID userId, PlanType planType, BillingCycle billingCycle) {
+        return new Subscription(
                 UUID.randomUUID(),
                 userId,
                 planType,
@@ -113,6 +113,7 @@ public class Subscription {
             case PLAN_STARTED -> 500;
             case PLAN_PRO -> 5000;
             case PLAN_ENTERPRISE -> 50000;
+            default -> throw new IllegalArgumentException("Unknown plan type");
         };
     }
 
