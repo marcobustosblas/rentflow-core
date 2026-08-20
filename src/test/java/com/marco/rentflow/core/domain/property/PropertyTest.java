@@ -1,5 +1,7 @@
 package com.marco.rentflow.core.domain.property;
 
+import com.marco.rentflow.core.domain.common.Currency;
+import com.marco.rentflow.core.domain.common.Money;
 import com.marco.rentflow.core.domain.property.exception.PropertyNotFoundException;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
@@ -12,8 +14,10 @@ public class PropertyTest {
 
     @Test
     void shouldCreatePropertySuccessfully() {
-        Property property = new Property(
-                "Av. Diego Portales 123", new BigDecimal("350000.00"), landlordId);
+        Property property = Property.registerNew(
+                "Av. Diego Portales 123",
+                new Money(new BigDecimal("350000.00"), Currency.CLP),
+                landlordId);
 
         assertNotNull(property.getId());
         assertEquals("Av. Diego Portales 123", property.getAddress());
@@ -24,7 +28,11 @@ public class PropertyTest {
 
     @Test
     void shouldAssignPayoutAccountSuccessfully() {
-        Property property = new Property("Av. Diego Portales 123", new BigDecimal("350000.00"), landlordId);
+        Property property = Property.registerNew(
+                "Av. Diego Portales 123",
+                new Money(new BigDecimal("350000.00"), Currency.CLP),
+                landlordId);
+
         UUID bankAccountId = UUID.randomUUID();
 
         property.assignPayoutAccount(bankAccountId);
@@ -34,8 +42,12 @@ public class PropertyTest {
 
     @Test
     void shouldUpdateBasePriceSuccessfully() {
-        Property property = new Property("Av. Diego Portales 123", new BigDecimal("350000.00"), landlordId);
-        BigDecimal newPrice = new BigDecimal("400000.00");
+        Property property = Property.registerNew(
+                "Av. Diego Portales 123",
+                new Money(new BigDecimal("350000.00"), Currency.CLP),
+                landlordId);
+
+        Money newPrice = new Money(new BigDecimal("400000.00"), Currency.CLP);
 
         property.updateBasePrice(newPrice);
 
@@ -44,8 +56,10 @@ public class PropertyTest {
 
     @Test
     void shouldUpdateAddressSuccessfully() {
-        Property property = new Property(
-                "Pje. Borgoño 123", new BigDecimal("350000.00"), landlordId);
+        Property property = Property.registerNew(
+                "Pje. Gorgoña 123",
+                new Money(new BigDecimal("350000.00"), Currency.CLP),
+                landlordId);
         String newAddress = "Pje. Borgoña 123";
 
         property.updateAddress(newAddress);
@@ -55,18 +69,23 @@ public class PropertyTest {
 
     @Test
     void shouldThrowExceptionWhenUpdatingBasePriceToZeroOrNegative() {
-        Property property = new Property(
-                "Av. Diego Portales 123", new BigDecimal("350000.00"), landlordId);
+        Property property = Property.registerNew(
+                "Av. Diego Portales 123",
+                new Money(new BigDecimal("350000.00"), Currency.CLP),
+                landlordId);
 
         assertThrows(IllegalArgumentException.class,
-                () -> property.updateBasePrice(BigDecimal.ZERO));
+                () -> property.updateBasePrice(new Money(new BigDecimal("0.00"), Currency.CLP)));
         assertThrows(IllegalArgumentException.class,
-                () -> property.updateBasePrice(new BigDecimal("-100.00")));
+                () -> property.updateBasePrice(new Money(new BigDecimal("-100.00"), Currency.CLP)));
     }
 
     @Test
     void shouldChangeStatusTransitionsCorrectly() {
-        Property property = new Property("Av. Diego Portales 123", new BigDecimal("350000.00"), landlordId);
+        Property property = Property.registerNew(
+                "Av. Diego Portales 123",
+                new Money(new BigDecimal("350000.00"), Currency.CLP),
+                landlordId);
 
         property.markAsRented();
         assertEquals(PropertyStatus.RENTED, property.getStatus());
@@ -83,7 +102,10 @@ public class PropertyTest {
 
     @Test
     void shouldThrowExceptionWhenAddressIsInvalid() {
-        Property property = new Property("Av. Diego Portales 123", new BigDecimal("350000.00"), landlordId);
+        Property property = Property.registerNew(
+                "Av. Diego Portales 123",
+                new Money(new BigDecimal("350000.00"), Currency.CLP),
+                landlordId);
 
         assertThrows(NullPointerException.class, () -> property.updateAddress(null));
         assertThrows(IllegalArgumentException.class, () -> property.updateAddress("   "));
@@ -92,19 +114,22 @@ public class PropertyTest {
     @Test
     void shouldThrowExceptionWhenRequiredFieldsAreNull() {
         // Pruebas para el constructor inicial
-        assertThrows(NullPointerException.class, () -> new Property(null, new BigDecimal("350000"), landlordId));
-        assertThrows(NullPointerException.class, () -> new Property("Direccion", null, landlordId));
-        assertThrows(NullPointerException.class, () -> new Property("Direccion", new BigDecimal("350000"), null));
+        assertThrows(NullPointerException.class, () -> Property.registerNew(null, new Money(new BigDecimal("350000.00"), Currency.CLP), landlordId));
+        assertThrows(NullPointerException.class, () -> Property.registerNew("Direction", null, landlordId));
+        assertThrows(NullPointerException.class, () -> Property.registerNew("Direction", new Money(new BigDecimal("350000.00"), Currency.CLP), null));
 
         // Prueba para el constructor completo (Mapper)
         assertThrows(NullPointerException.class, () ->
-                new Property(UUID.randomUUID(), landlordId, null, "Dir", null, PropertyStatus.AVAILABLE, java.time.LocalDateTime.now(), java.time.LocalDateTime.now())
+                Property.reconstitute(UUID.randomUUID(), landlordId, null, "Dir", null, PropertyStatus.AVAILABLE, java.time.LocalDateTime.now(), java.time.LocalDateTime.now())
         );
     }
 
     @Test
     void shouldCoverAllGetters() {
-        Property property = new Property("Av. Diego Portales 123", new BigDecimal("350000.00"), landlordId);
+        Property property = Property.registerNew(
+                "Av. Diego Portales 123",
+                new Money(new BigDecimal("350000.00"), Currency.CLP),
+                landlordId);
 
         assertNotNull(property.getCreatedAt());
         assertNotNull(property.getUpdatedAt());

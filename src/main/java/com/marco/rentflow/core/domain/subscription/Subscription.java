@@ -113,7 +113,6 @@ public class Subscription {
             case PLAN_STARTED -> 500;
             case PLAN_PRO -> 5000;
             case PLAN_ENTERPRISE -> 50000;
-            default -> throw new IllegalArgumentException("Unknown plan type");
         };
     }
 
