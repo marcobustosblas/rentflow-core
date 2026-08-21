@@ -26,19 +26,19 @@ Antes de detallar los flujos, estas son las reglas inquebrantables del sistema q
 
 ### Precondiciones
 - El usuario está autenticado y tiene el rol `LANDLORD`.
-- Tiene una suscripción activa (`ACTIVE`).
 
 ### Flujo Principal (Happy Path)
 1. El Landlord envía los datos de la propiedad (dirección, precio base, cuenta bancaria de destino).
 2. El sistema recupera la `Subscription` del Landlord.
-3. El sistema evalúa `subscription.canAddProperty(currentCount)`.
-4. El sistema instancia una nueva `Property` con estado `AVAILABLE`.
-5. Si se proporciona un `bankAccountId`, el sistema lo asigna vía `property.assignPayoutAccount()`.
-6. El sistema persiste la `Property` a través de `PropertyRepository`.
-7. Retorna el UUID de la propiedad creada.
+3. El sistema cuenta las propiedades actuales del Landlord en la base de datos (`countByLandlordId`).
+4. El sistema evalúa `subscription.canAddProperty(currentCount)`.
+5. El sistema instancia una nueva `Property` con estado `AVAILABLE`.
+6. Si se proporciona un `bankAccountId`, el sistema lo asigna vía `property.assignPayoutAccount()`.
+7. El sistema persiste la `Property` a través de `PropertyRepository`.
+8. Retorna la propiedad creada.
 
 ### Flujos Alternativos
-- **1a. Límite de Plan Excedido:** Si `canAddProperty` retorna `false`, el sistema lanza `SubscriptionLimitExceededException` (HTTP 403 Forbidden) invitando al usuario a mejorar su plan.
+- **1a. Límite de Plan Excedido:** Si `canAddProperty` retorna `false`, el sistema lanza `IllegalStateException` (HTTP 403 Forbidden) invitando al usuario a mejorar su plan.
 - **1b. Cuenta Bancaria No Encontrada:** Si el `bankAccountId` no pertenece al Landlord, lanza `IllegalArgumentException` (HTTP 400 Bad Request).
 
 ---
@@ -50,73 +50,86 @@ Antes de detallar los flujos, estas son las reglas inquebrantables del sistema q
 
 ### Precondiciones
 - La `Property` existe y su estado es `AVAILABLE`.
-- El `Tenant` (inquilino) existe en el sistema.
+- El `Tenant` (inquilino) existe en el sistema y tiene el rol `TENANT`.
 
 ### Flujo Principal (Happy Path)
-1. El Landlord envía los datos (Inquilino, Fecha Inicio/Fin, Día de pago mensual, Multa diaria, Meses reajuste IPC).
-2. El sistema valida las reglas de fechas (Fecha Inicio < Fecha Fin).
-3. El sistema crea el agregado `RentalContract` con estado `ACTIVE`.
-4. El sistema actualiza el estado de la `Property` a `RENTED` (`property.markAsRented()`).
-5. Se persisten ambos agregados en una transacción atómica (o usando Eventos de Dominio).
-6. Retorna el detalle del contrato.
+1. El Landlord envía los datos (Inquilino, Fecha Inicio/Fin, Día de pago mensual, Multa diaria).
+2. El sistema busca la `Property` y valida que el `landlordId` que ejecuta la acción sea el dueño real de la propiedad (Prevención IDOR).
+3. El sistema valida que la propiedad esté `AVAILABLE`.
+4. El sistema busca al `Tenant` y valida que tenga los privilegios correctos.
+5. El sistema crea el agregado `RentalContract` con estado `ACTIVE`.
+6. El sistema actualiza el estado de la `Property` a `RENTED` (`property.markAsRented()`).
+7. Se persisten ambos agregados.
+8. Retorna el detalle del contrato.
 
 ### Flujos Alternativos
-- **2a. Propiedad no disponible:** Si la propiedad está en `MAINTENANCE` o `RENTED`, lanza `IllegalStateException` (HTTP 409 Conflict).
-
+- **2a. Propiedad no disponible:** Si la propiedad está en `MAINTENANCE` o `RENTED`, lanza `IllegalStateException`.
+- **2b. Brecha de Seguridad (IDOR):** Si el `landlordId` no coincide con el dueño de la propiedad, el sistema bloquea la operación con `IllegalStateException`.
+- **2c. Tenant Inválido:** Si el usuario no existe o no es `TENANT`, se lanza una excepción de negocio.
 ---
 
 ## UC-03: Procesar Pago de Arriendo (Process Payment)
 
-**Actor Principal:** Tenant / Sistema Automático Webpay
+**Actor Principal:** Tenant / Sistema Automático de Pagos (Webhook Webpay)
 **Componente:** `ProcessPaymentUseCase`
 
 ### Precondiciones
-- El `RentalContract` existe y está `ACTIVE`.
+- Si la petición viene del `Tenant`, el usuario debe estar autenticado.
+- Si viene de un Webhook, la firma del payload debe ser validada por la Infraestructura.
 
 ### Flujo Principal (Happy Path)
-1. El sistema recibe la orden de pago (Monto base, Fecha de pago, `idempotencyKey`).
-2. Se consulta a la BD si el `idempotencyKey` ya existe. Si no, continúa.
-3. El sistema carga el `RentalContract`.
-4. El sistema ejecuta `contract.calculatePaymentDue(paymentDate)`.
-    - *Sub-flujo:* Si `paymentDate` > `dueDay`, el dominio suma el `dailyPenalty` al monto base.
-5. Se genera un `PaymentRecord` con estado `PAID` y los montos desglosados (Monto Base + Late Fee).
-6. El sistema guarda el pago vía `PaymentRepository`.
-7. El sistema invoca `NotificationSenderPort` para enviar el comprobante por WhatsApp/Email al Landlord y al Tenant.
+1. El sistema recibe la orden de pago (ID del Contrato, Monto pagado, Fecha de pago, `idempotencyKey`).
+2. **[Seguridad - Idempotencia]** El sistema consulta al `PaymentRepository` si el `idempotencyKey` ya fue procesado. Si existe, detiene el flujo y retorna éxito inmediatamente para evitar doble cobro.
+3. El sistema recupera el `RentalContract` a través del `ContractRepository`.
+4. **[Seguridad - Prevención IDOR]** Si el actor es el `Tenant`, el sistema verifica que el `tenantId` del contrato coincida con el usuario autenticado.
+5. El sistema evalúa el estado y ejecuta `contract.calculatePaymentDue(paymentDate)`.
+   - *Sub-flujo de Dominio:* Si hay atraso, el contrato suma automáticamente la multa diaria al monto base.
+6. El sistema crea un `PaymentRecord` mediante su Factory Method seguro, con estado `PAID` y los montos desglosados.
+7. El sistema persiste el registro vía `PaymentRepository`.
+8. El sistema invoca el puerto `NotificationSenderPort` para enviar el comprobante (Email/WhatsApp) a las partes.
+9. Retorna el UUID del registro de pago.
 
 ### Flujos Alternativos
-- **3a. Idempotencia Detectada:** Si el `idempotencyKey` ya existe, el sistema detiene el proceso inmediatamente y devuelve HTTP 200 OK con el recibo del pago anterior (Previene error de doble clic).
-- **3b. Pago Insuficiente:** Si el monto transferido es menor al cálculo de `calculatePaymentDue`, se marca el pago como `PARTIAL` (o se rechaza dependiendo de la configuración del Landlord).
+- **3a. Pago Insuficiente:** Si el monto transferido es menor al cálculo estricto del Dominio (Arriendo + Multas), el Caso de Uso lanza `IllegalArgumentException` y aborta la transacción.
+- **3b. Contrato Inactivo:** Si el contrato está en estado `EXPIRED` o `TERMINATED`, lanza `IllegalStateException`.
 
 ---
 
 ## UC-04: Reajuste Automático por IPC (Readjust Rent by IPC)
 
-**Actor Principal:** Sistema (Cron Job programado a la 01:00 AM)
+**Actor Principal:** Sistema (Cron Job automatizado)
 **Componente:** `ReadjustRentByIpcUseCase`
 
+### Precondiciones
+- El Job se ejecuta según la calendarización de la Infraestructura (ej. 01:00 AM del primer día del mes).
+
 ### Flujo Principal (Happy Path)
-1. El sistema (`Scheduler`) consulta los contratos cuyo ciclo de `ipcReadjustmentMonths` se cumple en el mes actual.
-2. Para cada contrato, el sistema llama a `EconomicIndicatorPort` para obtener la variación del IPC.
-3. El adaptador `MindicatorAdapter` consulta la API REST de `mindicador.cl` y retorna el % de inflación.
-4. El sistema ejecuta `contract.readjustRentByIpc(ipcPercentage)` actualizando el `rentAmount`.
-5. Se guardan los contratos actualizados.
-6. El sistema invoca `NotificationSenderPort` para notificar al Tenant el nuevo valor del arriendo con 30 días de anticipación.
+1. El sistema consulta al `ContractRepository` por todos los contratos activos cuyo ciclo de meses para reajuste se cumpla en la fecha actual.
+2. Por cada contrato encontrado, el sistema solicita el porcentaje de inflación actual a través del `EconomicIndicatorPort`.
+3. El adaptador externo consulta la API oficial (ej. mindicador.cl) y retorna el valor (%).
+4. El sistema ejecuta la regla de dominio `contract.readjustRentByIpc(ipcPercentage)`.
+5. El sistema guarda la actualización en bloque (batch save) mediante el `ContractRepository`.
+6. El sistema invoca `NotificationSenderPort` para alertar al Inquilino sobre el nuevo valor del canon de arriendo.
 
 ### Flujos Alternativos
-- **4a. Caída de API Externa:** Si `mindicador.cl` no responde, el sistema atrapa la `IndicatorApiException`, alerta al Admin, y reencola la tarea para el día siguiente sin alterar el contrato.
+- **4a. Falla de API Externa:** Si el servicio de indicadores económicos arroja timeout, el Caso de Uso atrapa la excepción, registra el error y detiene el proceso de ese contrato específico para reintentarlo al día siguiente, protegiendo la integridad de los datos.
 
 ---
 
-## UC-05: Auditoría de Contrato PDF con IA (Audit Contract PDF)
+## UC-05: Auditoría y Extracción de Contrato PDF con IA (Audit Contract PDF)
 
 **Actor Principal:** Landlord
 **Componente:** `AuditContractPdfUseCase`
 
+### Precondiciones
+- El Landlord está autenticado.
+
 ### Flujo Principal (Happy Path)
-1. El Landlord sube un PDF escaneado de un contrato físico de arriendo.
-2. El sistema lee el binario y lo envía al `ContractAiExtractorPort`.
-3. El `SpringAiContractExtractorAdapter` envía el documento al modelo LLM (OpenAI/Claude) con un *System Prompt* estricto para extraer salidas estructuradas en JSON.
-4. La IA devuelve un DTO `ExtractedContractData` con: nombre del inquilino, monto pactado, día límite de pago y rut.
-5. El sistema pre-llena el formulario del FrontEnd con los datos extraídos para que el Landlord solo presione "Confirmar y Crear".
+1. El Landlord envía un archivo binario (PDF/Imagen) del contrato impreso a la API.
+2. El sistema recibe el flujo de bytes y lo delega inmediatamente al `ContractAiExtractorPort`.
+3. La capa de infraestructura (Spring AI / LLM) procesa el documento utilizando un System Prompt estricto.
+4. El puerto retorna un DTO (Data Transfer Object) estructurado con: nombre, montos, fechas, multas y banderas de riesgo legal (Semáforo).
+5. El Caso de Uso retorna este DTO hacia el adaptador de entrada (Controller) para pre-llenar la interfaz visual del usuario.
+   *Nota: Este Caso de Uso no altera el estado de la base de datos de RentFlow, es puro de lectura y extracción asistida.*
 
 ---
