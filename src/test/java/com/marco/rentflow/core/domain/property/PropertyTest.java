@@ -23,7 +23,7 @@ public class PropertyTest {
         assertEquals("Av. Diego Portales 123", property.getAddress());
         assertEquals(PropertyStatus.AVAILABLE, property.getStatus());
         assertTrue(property.isAvailable());
-        assertNull(property.getPayoutAccountId());
+        assertNull(property.getBankAccountId());
     }
 
     @Test
@@ -37,7 +37,7 @@ public class PropertyTest {
 
         property.assignPayoutAccount(bankAccountId);
 
-        assertEquals(bankAccountId, property.getPayoutAccountId());
+        assertEquals(bankAccountId, property.getBankAccountId());
     }
 
     @Test

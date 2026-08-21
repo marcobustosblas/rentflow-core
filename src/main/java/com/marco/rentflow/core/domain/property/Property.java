@@ -10,7 +10,7 @@ import java.util.UUID;
 public class Property {
     private final UUID id;
     private final UUID landlordId;
-    private UUID payoutAccountId;
+    private UUID bankAccountId;
     private String address;
     private Money basePrice; // Evolución: Uso el Value Object
     private PropertyStatus status;
@@ -21,7 +21,7 @@ public class Property {
     private Property(UUID id, UUID landlordId, UUID payoutAccountId, String address, Money basePrice, PropertyStatus status, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = Objects.requireNonNull(id, "Property ID cannot be null");
         this.landlordId = Objects.requireNonNull(landlordId, "Landlord ID cannot be null");
-        this.payoutAccountId = payoutAccountId;
+        this.bankAccountId = payoutAccountId;
         this.address = Objects.requireNonNull(address, "Address cannot be null");
         this.basePrice = Objects.requireNonNull(basePrice, "Base price cannot be null");
         this.status = Objects.requireNonNull(status, "Status cannot be null");
@@ -51,7 +51,7 @@ public class Property {
     // === REGLAS Y MÉTODOS DE DOMINIO ===
 
     public void assignPayoutAccount(UUID bankAccountId) {
-        this.payoutAccountId = Objects.requireNonNull(bankAccountId, "Payout account ID cannot be null");
+        this.bankAccountId = Objects.requireNonNull(bankAccountId, "Payout account ID cannot be null");
         touch();
     }
 
@@ -99,7 +99,7 @@ public class Property {
     // === GETTERS ===
     public UUID getId() { return id; }
     public UUID getLandlordId() { return landlordId; }
-    public UUID getPayoutAccountId() { return payoutAccountId; }
+    public UUID getBankAccountId() { return bankAccountId; }
     public String getAddress() { return address; }
     public Money getBasePrice() { return basePrice; }
     public PropertyStatus getStatus() { return status; }
