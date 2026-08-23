@@ -1,5 +1,7 @@
 package com.marco.rentflow.core.domain.bankaccount;
 
+import com.marco.rentflow.core.domain.common.Rut;
+
 import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
@@ -48,11 +50,8 @@ public class BankAccount {
     // MÉTODOS PRIVADOS AUXILIARES
 
     private static String validateAndCleanRut(String rutInput) {
-        String clean = validateNotBlank(rutInput, "Holder RUT cannot be empty").toUpperCase();
-        if (!clean.matches(RUT_REGEX)) {
-            throw new IllegalArgumentException("Invalid Holder RUT format. Expected format: 12345678-9");
-        }
-        return clean;
+        Rut clean = new Rut(rutInput);
+        return clean.getValue();
     }
 
     private static String validateNotBlank(String value, String message) {
