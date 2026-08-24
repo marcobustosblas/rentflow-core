@@ -74,14 +74,17 @@ Antes de detallar los flujos, estas son las reglas inquebrantables del sistema q
 **Componente:** `ProcessPaymentUseCase`
 
 ### Precondiciones
-- Si la petición viene del `Tenant`, el usuario debe estar autenticado.
+- Si la petición viene del `Tenant`, el usuario debe estar 'autenticado'.
+  (todo lo que es 'autenticado' es seguridad y eso se avalúa en otro escenario, no aquí)
 - Si viene de un Webhook, la firma del payload debe ser validada por la Infraestructura.
 
 ### Flujo Principal (Happy Path)
 1. El sistema recibe la orden de pago (ID del Contrato, Monto pagado, Fecha de pago, `idempotencyKey`).
-2. **[Seguridad - Idempotencia]** El sistema consulta al `PaymentRepository` si el `idempotencyKey` ya fue procesado. Si existe, detiene el flujo y retorna éxito inmediatamente para evitar doble cobro.
+2. **[Security - Idempotency]** El sistema consulta al `PaymentRepository` si el `idempotencyKey` ya fue procesado. 
+   Si existe, detiene el flujo y retorna éxito inmediatamente para evitar doble cobro.
 3. El sistema recupera el `RentalContract` a través del `ContractRepository`.
-4. **[Seguridad - Prevención IDOR]** Si el actor es el `Tenant`, el sistema verifica que el `tenantId` del contrato coincida con el usuario autenticado.
+4. **[Seguridad - Prevención IDOR]** Si el actor es el `Tenant`, el sistema verifica que
+   el `tenantId` del contrato coincida con el usuario autenticado.
 5. El sistema evalúa el estado y ejecuta `contract.calculatePaymentDue(paymentDate)`.
    - *Sub-flujo de Dominio:* Si hay atraso, el contrato suma automáticamente la multa diaria al monto base.
 6. El sistema crea un `PaymentRecord` mediante su Factory Method seguro, con estado `PAID` y los montos desglosados.

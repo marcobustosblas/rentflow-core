@@ -241,7 +241,7 @@ public class PaymentRecordTest {
             LocalDateTime now = LocalDateTime.now();
             LocalDate payDate = LocalDate.now();
 
-            PaymentRecord payment = new PaymentRecord(
+            PaymentRecord payment = PaymentRecord.reconstitute(
                     UUID.randomUUID(), contractId, tenantId, idempotencyKey,
                     dueDate, payDate, rentAmount, rentAmount,
                     new Money(BigDecimal.ZERO, Currency.CLP),

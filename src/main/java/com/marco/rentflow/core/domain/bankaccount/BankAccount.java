@@ -18,11 +18,10 @@ public class BankAccount {
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public BankAccount(UUID userId, String bankName, AccountType accountType, String accountNumber, String holderRut) {
-        this(UUID.randomUUID(), userId, bankName, accountType, accountNumber, holderRut, LocalDateTime.now(), LocalDateTime.now());
-    }
-
-    public BankAccount(UUID id, UUID userId, String bankName, AccountType accountType, String accountNumber, String holderRut, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    // 1. CONSTRUCTOR PRIVADO (El Guardián Absoluto)
+    private BankAccount(UUID id, UUID userId, String bankName, AccountType accountType,
+                        String accountNumber, String holderRut,
+                        LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = Objects.requireNonNull(id, "ID cannot be null");
         this.userId = Objects.requireNonNull(userId, "User ID cannot be null");
         this.bankName = validateNotBlank(bankName, "Bank name cannot be null");
@@ -31,6 +30,25 @@ public class BankAccount {
         this.holderRut = validateAndCleanRut(holderRut);
         this.createdAt = Objects.requireNonNull(createdAt, "CreatedAt cannot be null");
         this.updatedAt = Objects.requireNonNull(updatedAt, "UpdatedAt cannot be null");
+    }
+
+    // 2. FACTORY METHOD PARA NUEVOS (Capa de Aplicación)
+    public static BankAccount create(UUID userId, String bankName, AccountType accountType,
+                                     String accountNumber, String holderRut) {
+        return new BankAccount(
+                UUID.randomUUID(), userId, bankName, accountType,
+                accountNumber, holderRut, LocalDateTime.now(), LocalDateTime.now()
+        );
+    }
+
+    // 3. FACTORY METHOD PARA MAPEO DE BD (Capa de Infraestructura)
+    public static BankAccount reconstitute(UUID id, UUID userId, String bankName, AccountType accountType,
+                                           String accountNumber, String holderRut,
+                                           LocalDateTime createdAt, LocalDateTime updatedAt) {
+        return new BankAccount(
+                id, userId, bankName, accountType,
+                accountNumber, holderRut, createdAt, updatedAt
+        );
     }
 
     // MÉTODOS Y REGLAS DE DOMINIO

@@ -29,8 +29,30 @@ public class PaymentRecord {
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    // FACTORY Method para cobro pendiente
+    // 1. CONSTRUCTOR PRIVADO (El Guardián Absoluto)
+    private PaymentRecord(UUID id, UUID contractId, UUID tenantId, String idempotencyKey,
+                          LocalDate dueDate, LocalDate paymentDate,
+                          Money expectedAmount, Money paidAmount, Money lateFeeApplied,
+                          PaymentStatus status, String transactionReference,
+                          String paymentReceiptUrl,
+                          LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.id = Objects.requireNonNull(id, "PaymentRecord ID cannot be null");
+        this.contractId = Objects.requireNonNull(contractId, "Contract ID cannot be null");
+        this.tenantId = Objects.requireNonNull(tenantId, "Tenant ID cannot be null");
+        this.idempotencyKey = Objects.requireNonNull(idempotencyKey, "Idempotency key cannot be null");
+        this.dueDate = Objects.requireNonNull(dueDate, "Due date cannot be null");
+        this.paymentDate = paymentDate;
+        this.expectedAmount = Objects.requireNonNull(expectedAmount, "Expected amount cannot be null");
+        this.paidAmount = Objects.requireNonNull(paidAmount, "Paid amount cannot be null");
+        this.lateFeeApplied = Objects.requireNonNull(lateFeeApplied, "Late fee cannot be null");
+        this.status = Objects.requireNonNull(status, "Payment status cannot be null");
+        this.transactionReference = transactionReference;
+        this.paymentReceiptUrl = paymentReceiptUrl;
+        this.createdAt = Objects.requireNonNull(createdAt, "CreatedAt cannot be null");
+        this.updatedAt = Objects.requireNonNull(updatedAt, "UpdatedAt cannot be null");
+    }
 
+    // 2. FACTORY METHOD PARA NUEVOS (Capa de Aplicación)
     public static PaymentRecord createPending(UUID contractId, UUID tenantId,
                                               LocalDate dueDate, Money expectedAmount,
                                               String idempotencyKey) {
@@ -53,27 +75,20 @@ public class PaymentRecord {
         );
     }
 
-    // Constructor Completo (Reconstitución BD)
-    public PaymentRecord(UUID id, UUID contractId, UUID tenantId, String idempotencyKey,
-                         LocalDate dueDate, LocalDate paymentDate,
-                         Money expectedAmount, Money paidAmount, Money lateFeeApplied,
-                         PaymentStatus status, String transactionReference,
-                         String paymentReceiptUrl,
-                         LocalDateTime createdAt, LocalDateTime updatedAt) {
-        this.id = Objects.requireNonNull(id, "PaymentRecord ID cannot be null");
-        this.contractId = Objects.requireNonNull(contractId, "Contract ID cannot be null");
-        this.tenantId = Objects.requireNonNull(tenantId, "Tenant ID cannot be null");
-        this.idempotencyKey = Objects.requireNonNull(idempotencyKey, "Idempotency key cannot be null");
-        this.dueDate = Objects.requireNonNull(dueDate, "Due date cannot be null");
-        this.paymentDate = paymentDate;
-        this.expectedAmount = Objects.requireNonNull(expectedAmount, "Expected amount cannot be null");
-        this.paidAmount = Objects.requireNonNull(paidAmount, "Paid amount cannot be null");
-        this.lateFeeApplied = Objects.requireNonNull(lateFeeApplied, "Late fee cannot be null");
-        this.status = Objects.requireNonNull(status, "Payment status cannot be null");
-        this.transactionReference = transactionReference;
-        this.paymentReceiptUrl = paymentReceiptUrl;
-        this.createdAt = Objects.requireNonNull(createdAt, "CreatedAt cannot be null");
-        this.updatedAt = Objects.requireNonNull(updatedAt, "UpdatedAt cannot be null");
+    // 3. FACTORY METHOD PARA MAPEO DE BD (Capa de Infraestructura)
+    public static PaymentRecord reconstitute(UUID id, UUID contractId, UUID tenantId, String idempotencyKey,
+                                              LocalDate dueDate, LocalDate paymentDate,
+                                              Money expectedAmount, Money paidAmount, Money lateFeeApplied,
+                                              PaymentStatus status, String transactionReference,
+                                              String paymentReceiptUrl,
+                                              LocalDateTime createdAt, LocalDateTime updatedAt) {
+        return new PaymentRecord(
+                id, contractId, tenantId, idempotencyKey,
+                dueDate, paymentDate,
+                expectedAmount, paidAmount, lateFeeApplied,
+                status, transactionReference, paymentReceiptUrl,
+                createdAt, updatedAt
+        );
     }
 
     // MÉTODOS DE NEGOCIO Y TRANSICIÓN

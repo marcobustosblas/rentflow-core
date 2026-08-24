@@ -518,9 +518,9 @@ class RentalContractTest {
             LocalDateTime now = LocalDateTime.now();
             LocalDate lastReadjustment = LocalDate.now().minusMonths(1);
 
-            RentalContract contract = new RentalContract(
+            RentalContract contract = RentalContract.reconstitute(
                     propertyId, propertyId, tenantId, landlordId,
-                    standardRent, standardDeposit, 5,
+                    standardRent, standardDeposit, 5, BigDecimal.ZERO,
                     LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
                     ContractStatus.ACTIVE, now, now, lastReadjustment
             );

@@ -27,7 +27,8 @@ public class CreateContractUseCase {
     /* 1 */
     public RentalContract execute( UUID propertyId, UUID tenantId, UUID landlordId,
                         Money standardRent, Money standardDeposit,
-                        int paymentDueDay, LocalDate startDate, LocalDate endDate) {
+                        int paymentDueDay, java.math.BigDecimal dailyPenaltyRate,
+                        LocalDate startDate, LocalDate endDate) {
 
         /* Buscar la propiedad */
         Property property = propertyRepository.findById(propertyId)
@@ -55,7 +56,8 @@ public class CreateContractUseCase {
         RentalContract contract = RentalContract.create(
                 propertyId, tenantId, landlordId,
                 standardRent, standardDeposit,
-                paymentDueDay, startDate, endDate
+                paymentDueDay, dailyPenaltyRate != null ? dailyPenaltyRate : java.math.BigDecimal.ZERO,
+                startDate, endDate
         );
 
         /* 4 - El sistema actualiza el estado de la Property a RENTED */
