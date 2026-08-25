@@ -8,6 +8,7 @@ import com.marco.rentflow.core.domain.payment.PaymentRecord;
 import com.marco.rentflow.core.domain.payment.ports.out.PaymentRepository;
 
 import java.time.LocalDate;
+import java.util.Optional;
 import java.util.UUID;
 
 public class InitiatePaymentCheckoutUseCase {
@@ -39,18 +40,23 @@ public class InitiatePaymentCheckoutUseCase {
         LocalDate dueDate = contract.calculatePaymentDueDate(paymentDate.getYear(), paymentDate.getMonthValue());
         Money calculateTotal = contract.calculateTotalWithPenalty(paymentDate, dueDate);
 
-        /* 5 */
-        String idempotencyKey = UUID.randomUUID().toString();
+        /* 5, 6, 7 - Reutilizar cobro pendiente si ya existe para este contrato y vencimiento */
+        Optional<PaymentRecord> existingPending = paymentRepository.findByContractId(contractId).stream()
+                .filter(p -> p.isPending() && p.getDueDate().equals(dueDate))
+                .findFirst();
 
-        /* 6 */
-        PaymentRecord pendingPayment = PaymentRecord.createPending(
-                contractId, tenantId, dueDate, calculateTotal, idempotencyKey);
-
-        /* 7 */
-        paymentRepository.save(pendingPayment);
+        PaymentRecord pendingPayment;
+        if (existingPending.isPresent()) {
+            pendingPayment = existingPending.get();
+        } else {
+            String idempotencyKey = "PAY-" + contractId + "-" + dueDate.getYear() + "-" + String.format("%02d", dueDate.getMonthValue());
+            pendingPayment = PaymentRecord.createPending(
+                    contractId, tenantId, dueDate, calculateTotal, idempotencyKey);
+            paymentRepository.save(pendingPayment);
+        }
 
         /* 8 Pedirle a Webpay/Stripe el link de pago seguro */
-        return paymentGatewayPort.generateCheckoutUrl(idempotencyKey, calculateTotal);
+        return paymentGatewayPort.generateCheckoutUrl(pendingPayment.getIdempotencyKey(), calculateTotal);
 
     }
 }

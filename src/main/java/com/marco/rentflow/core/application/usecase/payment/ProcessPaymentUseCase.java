@@ -27,19 +27,22 @@ public class ProcessPaymentUseCase {
 
     /* 1 - Webhook recibe: Token de la transacción, Cuánto se pagó realmente, Cuándo se pagó */
     public PaymentRecord execute(String idempotencyKey, Money amountPaid, LocalDate actualPaymentDate) {
+        return execute(idempotencyKey, amountPaid, actualPaymentDate, idempotencyKey, null);
+    }
 
-        // 2. Buscar la intención de pago previa (La cotización congelada)
-        PaymentRecord payment = paymentRepository.findById(idempotencyKey)
-                .orElseThrow(() -> new IllegalArgumentException("Pending payment not found"));
+    public PaymentRecord execute(String idempotencyKey, Money amountPaid, LocalDate actualPaymentDate, String transactionRef, String receiptUrl) {
+
+        // 2. Buscar la intención de pago previa por la Clave de Idempotencia
+        PaymentRecord payment = paymentRepository.findByIdempotencyKey(idempotencyKey)
+                .orElseThrow(() -> new IllegalArgumentException("Pending payment not found for idempotency key: " + idempotencyKey));
 
         // 3. Seguridad - Idempotencia
         if (payment.isPaid()) {
             return payment;
         }
 
-        // 4 & 5. TRANSICIÓN DE ESTADO
-        Money lateFeeZero = new Money(BigDecimal.ZERO, amountPaid.getCurrency());
-        payment.registerPayment(amountPaid, actualPaymentDate, lateFeeZero, idempotencyKey, "url-recibo-aws-s3");
+        // 4 & 5. TRANSICIÓN DE ESTADO (preserva el desglose de multa previamente calculado)
+        payment.registerPayment(amountPaid, actualPaymentDate, payment.getLateFeeApplied(), transactionRef, receiptUrl);
 
         // 6 & 7 Persistir y notificar
         PaymentRecord savedPayment = paymentRepository.save(payment);

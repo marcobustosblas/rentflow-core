@@ -76,6 +76,16 @@ public class RentalContract {
         );
     }
 
+    public static final BigDecimal DEFAULT_DAILY_PENALTY_RATE = new BigDecimal("0.01");
+
+    public static RentalContract create(UUID propertyId, UUID tenantId, UUID landlordId,
+                                        Money monthlyRent, Money depositAmount,
+                                        int paymentDueDay,
+                                        LocalDate startDate, LocalDate endDate) {
+
+        return create(propertyId, tenantId, landlordId, monthlyRent, depositAmount, paymentDueDay, DEFAULT_DAILY_PENALTY_RATE, startDate, endDate);
+    }
+
     // 3. FACTORY METHOD PARA MAPEO DE BD (Capa de Infraestructura)
     public static RentalContract reconstitute(UUID id, UUID propertyId, UUID tenantId, UUID landlordId,
                                               Money monthlyRent, Money depositAmount, int paymentDueDay,

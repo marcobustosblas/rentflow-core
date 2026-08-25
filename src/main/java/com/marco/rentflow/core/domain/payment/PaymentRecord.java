@@ -106,6 +106,10 @@ public class PaymentRecord {
         Objects.requireNonNull(amountPaid, "Amount paid cannot be null");
         Objects.requireNonNull(actualPaymentDate, "Payment date cannot be null");
 
+        if (this.expectedAmount.getCurrency() != amountPaid.getCurrency()) {
+            throw new IllegalArgumentException("Payment currency does not match expected currency");
+        }
+
         // expectedAmount ya incluye ALL (Arriendo + Multa congelada)
         if (amountPaid.getAmount().compareTo(this.expectedAmount.getAmount()) < 0) {
             throw new IllegalArgumentException("Amount paid is less than expected total");
@@ -113,7 +117,14 @@ public class PaymentRecord {
 
         this.paidAmount = amountPaid;
         this.paymentDate = actualPaymentDate;
-        this.lateFeeApplied = lateFee != null ? lateFee : new Money(BigDecimal.ZERO, expectedAmount.getCurrency());
+        if (lateFee != null) {
+            if (lateFee.getCurrency() != expectedAmount.getCurrency()) {
+                throw new IllegalArgumentException("Late fee currency does not match expected currency");
+            }
+            this.lateFeeApplied = lateFee;
+        } else {
+            this.lateFeeApplied = new Money(BigDecimal.ZERO, expectedAmount.getCurrency());
+        }
         this.transactionReference = transactionRef;
         this.paymentReceiptUrl = receiptUrl;
         this.status = PaymentStatus.PAID;
