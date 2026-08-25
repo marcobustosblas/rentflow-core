@@ -20,7 +20,7 @@ public class RentalContract {
     private Money monthlyRent; // Ingreso mensual recurrente
     private Money depositAmount; // Mes de Garantía (pago único inicial)
     private int paymentDueDay; // Día del mes en que vence el arriendo
-    private BigDecimal dailyPenaltyRate;
+    private BigDecimal dailyPenaltyRate; // = new BigDecimal("0.01"); 1% diario
     private LocalDate startDate;
     private LocalDate endDate;
     private ContractStatus status;
@@ -76,13 +76,6 @@ public class RentalContract {
         );
     }
 
-    public static RentalContract create(UUID propertyId, UUID tenantId, UUID landlordId,
-                                        Money monthlyRent, Money depositAmount,
-                                        int paymentDueDay,
-                                        LocalDate startDate, LocalDate endDate) {
-        return create(propertyId, tenantId, landlordId, monthlyRent, depositAmount, paymentDueDay, BigDecimal.ZERO, startDate, endDate);
-    }
-
     // 3. FACTORY METHOD PARA MAPEO DE BD (Capa de Infraestructura)
     public static RentalContract reconstitute(UUID id, UUID propertyId, UUID tenantId, UUID landlordId,
                                               Money monthlyRent, Money depositAmount, int paymentDueDay,
@@ -111,12 +104,10 @@ public class RentalContract {
         return paymentDate.isAfter(dueDate);
     }
 
-    public Money calculateLateFee(LocalDate paymentDate, LocalDate dueDate, BigDecimal dailyPenaltyRate) {
+    public Money calculateLateFee(LocalDate paymentDate, LocalDate dueDate) {
         // step 1: Validar que ningún parámetro sea null
         Objects.requireNonNull(paymentDate, "Payment date cannot be null");
         Objects.requireNonNull(dueDate, "Due date cannot be null");
-        Objects.requireNonNull(dailyPenaltyRate, "Daily penalty rate cannot be null");
-        // BigDecimal dailyPenaltyRate = new BigDecimal("0.01"); // 1% diario
 
         // step 2: Verificar si está atrasado
         if (!isOverdue(paymentDate, dueDate)) {
@@ -130,7 +121,7 @@ public class RentalContract {
 
         // step 4: Calcular multa:
         BigDecimal penaltyAmount = this.monthlyRent.getAmount()
-                .multiply(dailyPenaltyRate)
+                .multiply(this.dailyPenaltyRate)
                 .multiply(daysMultiplier)
                 .setScale(2, RoundingMode.HALF_UP);
 
@@ -138,8 +129,8 @@ public class RentalContract {
         return new Money(penaltyAmount, this.monthlyRent.getCurrency());
     }
 
-    public Money calculateTotalWithPenalty(LocalDate paymentDate, LocalDate dueDate, BigDecimal dailyPenaltyRate) {
-        Money lateFee = calculateLateFee(paymentDate, dueDate, dailyPenaltyRate);
+    public Money calculateTotalWithPenalty(LocalDate paymentDate, LocalDate dueDate) {
+        Money lateFee = calculateLateFee(paymentDate, dueDate);
         return this.monthlyRent.add(lateFee); // Money garantiza que ambas monedas sean iguales
     }
 

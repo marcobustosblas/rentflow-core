@@ -219,11 +219,11 @@ class RentalContractTest {
             BigDecimal penaltyRate = new BigDecimal("0.01");
 
             // Prueba pagando justo a tiempo
-            Money lateFeeOnTime = contract.calculateLateFee(LocalDate.of(2026, 3, 5), dueDate, penaltyRate);
+            Money lateFeeOnTime = contract.calculateLateFee(LocalDate.of(2026, 3, 5), dueDate);
             assertEquals(new BigDecimal("0.00"), lateFeeOnTime.getAmount());
 
             // Prueba pagando por adelantado
-            Money lateFeeEarly = contract.calculateLateFee(LocalDate.of(2026, 3, 2), dueDate, penaltyRate);
+            Money lateFeeEarly = contract.calculateLateFee(LocalDate.of(2026, 3, 2), dueDate);
             assertEquals(new BigDecimal("0.00"), lateFeeEarly.getAmount());
         }
 
@@ -242,7 +242,7 @@ class RentalContractTest {
             LocalDate paymentDate = LocalDate.of(2026, 3, 8); // 3 días de atraso
             BigDecimal penaltyRate = new BigDecimal("0.01"); // 1% diario = $3.500 * 3 días = $10.500
 
-            Money lateFee = contract.calculateLateFee(paymentDate, dueDate, penaltyRate);
+            Money lateFee = contract.calculateLateFee(paymentDate, dueDate);
 
             assertEquals(new BigDecimal("10500.00"), lateFee.getAmount());
         }
@@ -260,7 +260,7 @@ class RentalContractTest {
             LocalDate paymentDate = LocalDate.of(2026, 3, 8);
             BigDecimal penaltyRate = new BigDecimal("0.01");
 
-            Money total = contract.calculateTotalWithPenalty(paymentDate, dueDate, penaltyRate);
+            Money total = contract.calculateTotalWithPenalty(paymentDate, dueDate);
             // 350,000 + 10,500 = 360,500
             assertEquals(new BigDecimal("360500.00"), total.getAmount());
         }

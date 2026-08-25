@@ -68,35 +68,61 @@ Antes de detallar los flujos, estas son las reglas inquebrantables del sistema q
 - **2c. Tenant Inválido:** Si el usuario no existe o no es `TENANT`, se lanza una excepción de negocio.
 ---
 
+## UC-03: Iniciar Pago de Arriendo (Initiate Payment Checkout)
+
+**Actor Principal:** Tenant (Inquilino)
+**Componente:** `InitiatePaymentCheckoutUseCase`
+
+### Precondiciones
+- El `Tenant` está autenticado en la plataforma (validado por el Controller).
+- El contrato asociado se encuentra en estado `ACTIVE`.
+
+### Flujo Principal (Happy Path)
+1. El inquilino solicita pagar el mes actual de su contrato.
+2. El sistema recupera el `RentalContract` a través del `ContractRepository`.
+3. **[Seguridad - Prevención IDOR]** El sistema verifica que el contrato pertenezca al inquilino que hace la petición.
+4. El sistema delega al contrato el cálculo de la fecha de vencimiento (`dueDate`) y el monto total a pagar, incluyendo multas por atraso si aplican.
+5. El sistema genera un `idempotencyKey` (UUID) para rastrear y asegurar la transacción en la pasarela de pagos.
+6. El sistema crea un `PaymentRecord` utilizando el Factory Method `createPending`, naciendo en estado `PENDING`.
+7. El sistema persiste esta intención de pago vía `PaymentRepository`.
+8. El sistema invoca el adaptador de salida `PaymentGatewayPort` (Webpay/Stripe) enviando el monto y la clave de idempotencia.
+9. El puerto retorna la URL segura de pago (Checkout URL).
+10. El Caso de Uso retorna esta URL hacia el Frontend para redirigir al usuario al portal bancario.
+
+### Flujos Alternativos
+- **3a. Intento de Fraude (IDOR):** Si el contrato no pertenece al Tenant autenticado, lanza `IllegalStateException`.
+- **4a. Contrato Inactivo:** Si el contrato no está activo, el Caso de Uso aborta la generación del pago.
+
+---
+
 ## UC-03: Procesar Pago de Arriendo (Process Payment)
 
 **Actor Principal:** Tenant / Sistema Automático de Pagos (Webhook Webpay)
 **Componente:** `ProcessPaymentUseCase`
 
 ### Precondiciones
-- Si la petición viene del `Tenant`, el usuario debe estar 'autenticado'.
-  (todo lo que es 'autenticado' es seguridad y eso se avalúa en otro escenario, no aquí)
+- Si la petición viene del `Tenant`, el Controller web de Infraestructura ya validó su sesión/JWT.
 - Si viene de un Webhook, la firma del payload debe ser validada por la Infraestructura.
 
 ### Flujo Principal (Happy Path)
-1. El sistema recibe la orden de pago (ID del Contrato, Monto pagado, Fecha de pago, `idempotencyKey`).
-2. **[Security - Idempotency]** El sistema consulta al `PaymentRepository` si el `idempotencyKey` ya fue procesado. 
-   Si existe, detiene el flujo y retorna éxito inmediatamente para evitar doble cobro.
+1. El sistema recibe la orden de pago (ID del Contrato, ID del Inquilino actor, Fecha de pago, Monto pagado, `idempotencyKey`).
+2. **[Seguridad - Idempotencia]** El sistema consulta al `PaymentRepository` si el `idempotencyKey` 
+   ya fue procesado. Si existe, detiene el flujo y retorna el pago anterior exitoso de inmediato para evitar un doble cobro.
 3. El sistema recupera el `RentalContract` a través del `ContractRepository`.
-4. **[Seguridad - Prevención IDOR]** Si el actor es el `Tenant`, el sistema verifica que
-   el `tenantId` del contrato coincida con el usuario autenticado.
-5. El sistema evalúa el estado y ejecuta `contract.calculatePaymentDue(paymentDate)`.
-   - *Sub-flujo de Dominio:* Si hay atraso, el contrato suma automáticamente la multa diaria al monto base.
-6. El sistema crea un `PaymentRecord` mediante su Factory Method seguro, con estado `PAID` y los montos desglosados.
-7. El sistema persiste el registro vía `PaymentRepository`.
-8. El sistema invoca el puerto `NotificationSenderPort` para enviar el comprobante (Email/WhatsApp) a las partes.
-9. Retorna el UUID del registro de pago.
+   Aquí quiero `pagar` el valor del contrato acordado.
+4. **[Seguridad - Prevención IDOR]** El sistema verifica que el `tenantId` guardado en el contrato coincida exactamente con el inquilino que está ejecutando la acción (`actorTenantId`).
+5. **[Seguridad - Estado del Contrato]** El sistema valida que el contrato esté en estado `ACTIVE`.
+6. El sistema calcula la fecha límite real del mes y ejecuta `contract.calculateTotalWithPenalty(paymentDate, dueDate)`.
+    - *Sub-flujo de Dominio:* Si hay atraso, el contrato suma automáticamente la multa diaria al monto base usando su propia tasa interna.
+7. El sistema crea un `PaymentRecord` mediante su Factory Method seguro, con estado `PAID` y los montos desglosados.
+8. El sistema persiste el registro vía `PaymentRepository`.
+9. El sistema invoca el puerto `NotificationSenderPort` para enviar el comprobante (Email/WhatsApp) a las partes.
+10. Retorna el registro de pago.
 
 ### Flujos Alternativos
-- **3a. Pago Insuficiente:** Si el monto transferido es menor al cálculo estricto del Dominio (Arriendo + Multas), el Caso de Uso lanza `IllegalArgumentException` y aborta la transacción.
-- **3b. Contrato Inactivo:** Si el contrato está en estado `EXPIRED` o `TERMINATED`, lanza `IllegalStateException`.
-
----
+- **4a. Intento de Fraude (IDOR):** Si el contrato no le pertenece al Inquilino que hace la petición, el sistema lanza `IllegalStateException` y aborta.
+- **5a. Contrato Inactivo:** Si el contrato está en estado `EXPIRED` o `TERMINATED`, lanza `IllegalStateException`.
+- **6a. Pago Insuficiente:** Si el monto transferido es menor al cálculo estricto del Dominio (Arriendo + Multas), el Caso de Uso lanza `IllegalArgumentException` y aborta la transacción.
 
 ## UC-04: Reajuste Automático por IPC (Readjust Rent by IPC)
 
