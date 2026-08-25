@@ -13,7 +13,7 @@ public class PaymentRecord {
     private final UUID id;
     private final UUID contractId;
     private final UUID tenantId;
-    private final String idempotencyKey;
+    private final String idempotencyKey; // String para pasarelas de pago
 
     private final LocalDate dueDate;
     private LocalDate paymentDate;
@@ -106,13 +106,8 @@ public class PaymentRecord {
         Objects.requireNonNull(amountPaid, "Amount paid cannot be null");
         Objects.requireNonNull(actualPaymentDate, "Payment date cannot be null");
 
-        // Calcular el total esperado (arriendo + multa)
-        Money totalExpected = this.expectedAmount.add(
-            lateFee != null ? lateFee : new Money(BigDecimal.ZERO, expectedAmount.getCurrency())
-        );
-
-        // Validar que lo que pagó el amountPaid sea suficiente
-        if (amountPaid.getAmount().compareTo(totalExpected.getAmount()) < 0) {
+        // expectedAmount ya incluye ALL (Arriendo + Multa congelada)
+        if (amountPaid.getAmount().compareTo(this.expectedAmount.getAmount()) < 0) {
             throw new IllegalArgumentException("Amount paid is less than expected total");
         }
 

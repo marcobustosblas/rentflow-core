@@ -95,34 +95,29 @@ Antes de detallar los flujos, estas son las reglas inquebrantables del sistema q
 
 ---
 
-## UC-03: Procesar Pago de Arriendo (Process Payment)
+## UC-04: Procesar Confirmación de Pago (Webhook / Phase 2)
 
-**Actor Principal:** Tenant / Sistema Automático de Pagos (Webhook Webpay)
+**Actor Principal:** Sistema Externo (Webhook de Webpay / Stripe)
 **Componente:** `ProcessPaymentUseCase`
 
 ### Precondiciones
-- Si la petición viene del `Tenant`, el Controller web de Infraestructura ya validó su sesión/JWT.
-- Si viene de un Webhook, la firma del payload debe ser validada por la Infraestructura.
+- El actor es un servidor externo. La capa de Infraestructura validó previamente la firma digital (HMAC/Token).
+- Existe un `PaymentRecord` previo en estado `PENDING` en la base de datos (Cotización congelada).
 
 ### Flujo Principal (Happy Path)
-1. El sistema recibe la orden de pago (ID del Contrato, ID del Inquilino actor, Fecha de pago, Monto pagado, `idempotencyKey`).
-2. **[Seguridad - Idempotencia]** El sistema consulta al `PaymentRepository` si el `idempotencyKey` 
-   ya fue procesado. Si existe, detiene el flujo y retorna el pago anterior exitoso de inmediato para evitar un doble cobro.
-3. El sistema recupera el `RentalContract` a través del `ContractRepository`.
-   Aquí quiero `pagar` el valor del contrato acordado.
-4. **[Seguridad - Prevención IDOR]** El sistema verifica que el `tenantId` guardado en el contrato coincida exactamente con el inquilino que está ejecutando la acción (`actorTenantId`).
-5. **[Seguridad - Estado del Contrato]** El sistema valida que el contrato esté en estado `ACTIVE`.
-6. El sistema calcula la fecha límite real del mes y ejecuta `contract.calculateTotalWithPenalty(paymentDate, dueDate)`.
-    - *Sub-flujo de Dominio:* Si hay atraso, el contrato suma automáticamente la multa diaria al monto base usando su propia tasa interna.
-7. El sistema crea un `PaymentRecord` mediante su Factory Method seguro, con estado `PAID` y los montos desglosados.
-8. El sistema persiste el registro vía `PaymentRepository`.
-9. El sistema invoca el puerto `NotificationSenderPort` para enviar el comprobante (Email/WhatsApp) a las partes.
-10. Retorna el registro de pago.
+1. El sistema recibe la confirmación asíncrona del pago (`idempotencyKey`, `amountPaid` descontado al usuario, `actualPaymentDate`).
+2. El sistema busca el `PaymentRecord` utilizando el `idempotencyKey`.
+3. **[Seguridad - Idempotencia]** El sistema verifica si el estado del pago ya es `PAID`. Si es así, asume que es un reintento de red, detiene el flujo y retorna éxito sin duplicar el cobro.
+4. El sistema ejecuta el método de dominio `payment.registerPayment(...)`.
+   - *Sub-flujo de Dominio:* El dominio valida internamente que el dinero reportado por el banco (`amountPaid`) cubra exactamente el total esperado que se congeló en la Fase 1.
+5. El dominio transiciona el estado del pago a `PAID`.
+6. El sistema persiste el registro actualizado vía `PaymentRepository`.
+7. El sistema invoca el puerto `NotificationSenderPort` para enviar el comprobante.
+8. Retorna el registro de pago procesado.
 
 ### Flujos Alternativos
-- **4a. Intento de Fraude (IDOR):** Si el contrato no le pertenece al Inquilino que hace la petición, el sistema lanza `IllegalStateException` y aborta.
-- **5a. Contrato Inactivo:** Si el contrato está en estado `EXPIRED` o `TERMINATED`, lanza `IllegalStateException`.
-- **6a. Pago Insuficiente:** Si el monto transferido es menor al cálculo estricto del Dominio (Arriendo + Multas), el Caso de Uso lanza `IllegalArgumentException` y aborta la transacción.
+- **4a. Fraude o Pago Insuficiente:** Si el monto reportado por el banco es menor a la deuda total congelada (ej. un atacante alteró el HTML antes de ir a Webpay), el dominio lanza `IllegalArgumentException`.
+---
 
 ## UC-04: Reajuste Automático por IPC (Readjust Rent by IPC)
 
