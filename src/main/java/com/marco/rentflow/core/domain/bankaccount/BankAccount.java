@@ -1,5 +1,7 @@
 package com.marco.rentflow.core.domain.bankaccount;
 
+import com.marco.rentflow.core.domain.common.Rut;
+
 import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
@@ -16,11 +18,10 @@ public class BankAccount {
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public BankAccount(UUID userId, String bankName, AccountType accountType, String accountNumber, String holderRut) {
-        this(UUID.randomUUID(), userId, bankName, accountType, accountNumber, holderRut, LocalDateTime.now(), LocalDateTime.now());
-    }
-
-    public BankAccount(UUID id, UUID userId, String bankName, AccountType accountType, String accountNumber, String holderRut, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    // 1. CONSTRUCTOR PRIVADO (El Guardián Absoluto)
+    private BankAccount(UUID id, UUID userId, String bankName, AccountType accountType,
+                        String accountNumber, String holderRut,
+                        LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = Objects.requireNonNull(id, "ID cannot be null");
         this.userId = Objects.requireNonNull(userId, "User ID cannot be null");
         this.bankName = validateNotBlank(bankName, "Bank name cannot be null");
@@ -29,6 +30,25 @@ public class BankAccount {
         this.holderRut = validateAndCleanRut(holderRut);
         this.createdAt = Objects.requireNonNull(createdAt, "CreatedAt cannot be null");
         this.updatedAt = Objects.requireNonNull(updatedAt, "UpdatedAt cannot be null");
+    }
+
+    // 2. FACTORY METHOD PARA NUEVOS (Capa de Aplicación)
+    public static BankAccount create(UUID userId, String bankName, AccountType accountType,
+                                     String accountNumber, String holderRut) {
+        return new BankAccount(
+                UUID.randomUUID(), userId, bankName, accountType,
+                accountNumber, holderRut, LocalDateTime.now(), LocalDateTime.now()
+        );
+    }
+
+    // 3. FACTORY METHOD PARA MAPEO DE BD (Capa de Infraestructura)
+    public static BankAccount reconstitute(UUID id, UUID userId, String bankName, AccountType accountType,
+                                           String accountNumber, String holderRut,
+                                           LocalDateTime createdAt, LocalDateTime updatedAt) {
+        return new BankAccount(
+                id, userId, bankName, accountType,
+                accountNumber, holderRut, createdAt, updatedAt
+        );
     }
 
     // MÉTODOS Y REGLAS DE DOMINIO
@@ -48,11 +68,8 @@ public class BankAccount {
     // MÉTODOS PRIVADOS AUXILIARES
 
     private static String validateAndCleanRut(String rutInput) {
-        String clean = validateNotBlank(rutInput, "Holder RUT cannot be empty").toUpperCase();
-        if (!clean.matches(RUT_REGEX)) {
-            throw new IllegalArgumentException("Invalid Holder RUT format. Expected format: 12345678-9");
-        }
-        return clean;
+        Rut clean = new Rut(rutInput);
+        return clean.getValue();
     }
 
     private static String validateNotBlank(String value, String message) {

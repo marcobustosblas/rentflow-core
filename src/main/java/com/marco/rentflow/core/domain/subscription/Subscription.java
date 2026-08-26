@@ -16,7 +16,23 @@ public class Subscription {
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    // 1. Constructor para NUEVA suscripción (Registro desde 0)
+    // 1. CONSTRUCTOR PRIVADO (El Guardián Absoluto)
+    private Subscription(UUID id, UUID userId, PlanType planType, BillingCycle billingCycle,
+                         SubscriptionStatus status, int maxProperties, int maxStorageMb,
+                         LocalDateTime currentPeriodEnd, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.id = Objects.requireNonNull(id, "Subscription ID cannot be null");
+        this.userId = Objects.requireNonNull(userId, "User ID cannot be null");
+        this.planType = Objects.requireNonNull(planType, "PlanType cannot be null");
+        this.billingCycle = Objects.requireNonNull(billingCycle, "BillingCycle cannot be null");
+        this.status = Objects.requireNonNull(status, "Status cannot be null");
+        this.maxProperties = maxProperties;
+        this.maxStorageMb = maxStorageMb;
+        this.subscriptionPeriodEnd = Objects.requireNonNull(currentPeriodEnd, "CurrentPeriodEnd cannot be null");
+        this.createdAt = Objects.requireNonNull(createdAt, "CreatedAt cannot be null");
+        this.updatedAt = Objects.requireNonNull(updatedAt, "UpdatedAt cannot be null");
+    }
+
+    // 2. FACTORY METHOD PARA NUEVOS (Capa de Aplicación)
     public static Subscription create(UUID userId, PlanType planType, BillingCycle billingCycle) {
         return new Subscription(
                 UUID.randomUUID(),
@@ -32,20 +48,15 @@ public class Subscription {
         );
     }
 
-    // 2. Constructor completo (Reconstitución desde la Base de Datos)
-    public Subscription(UUID id, UUID userId, PlanType planType, BillingCycle billingCycle,
-                        SubscriptionStatus status, int maxProperties, int maxStorageMb,
-                        LocalDateTime currentPeriodEnd, LocalDateTime createdAt, LocalDateTime updatedAt) {
-        this.id = Objects.requireNonNull(id, "Subscription ID cannot be null");
-        this.userId = Objects.requireNonNull(userId, "User ID cannot be null");
-        this.planType = Objects.requireNonNull(planType, "PlanType cannot be null");
-        this.billingCycle = Objects.requireNonNull(billingCycle, "BillingCycle cannot be null");
-        this.status = Objects.requireNonNull(status, "Status cannot be null");
-        this.maxProperties = maxProperties;
-        this.maxStorageMb = maxStorageMb;
-        this.subscriptionPeriodEnd = Objects.requireNonNull(currentPeriodEnd, "CurrentPeriodEnd cannot be null");
-        this.createdAt = Objects.requireNonNull(createdAt, "CreatedAt cannot be null");
-        this.updatedAt = Objects.requireNonNull(updatedAt, "UpdatedAt cannot be null");
+    // 3. FACTORY METHOD PARA MAPEO DE BD (Capa de Infraestructura)
+    public static Subscription reconstitute(UUID id, UUID userId, PlanType planType, BillingCycle billingCycle,
+                                        SubscriptionStatus status, int maxProperties, int maxStorageMb,
+                                        LocalDateTime currentPeriodEnd, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        return new Subscription(
+                id, userId, planType, billingCycle,
+                status, maxProperties, maxStorageMb,
+                currentPeriodEnd, createdAt, updatedAt
+        );
     }
 
     // MÉTODOS Y REGLAS DE DOMINIO
@@ -113,7 +124,6 @@ public class Subscription {
             case PLAN_STARTED -> 500;
             case PLAN_PRO -> 5000;
             case PLAN_ENTERPRISE -> 50000;
-            default -> throw new IllegalArgumentException("Unknown plan type");
         };
     }
 

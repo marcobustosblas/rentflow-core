@@ -1,5 +1,7 @@
 package com.marco.rentflow.core.domain.user;
 
+import com.marco.rentflow.core.domain.common.Rut;
+
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -8,24 +10,20 @@ public class User {
     private String email;
     private String passwordHash;
     private String fullName;
-    private String rut;
+    private Rut rut; // Evolución: Usamos el Value Object
     private String phoneNumber;
     private final Set<Role> roles;
     private UserStatus status;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private static final String RUT_REGEX = "^\\d{7,8}-[0-9Kk]$";
 
-    public User(String email, String passwordHash, String fullName, String rut, String phoneNumber, Role initialRole) {
-        this(UUID.randomUUID(), email, passwordHash, fullName, rut, phoneNumber, Set.of(initialRole), UserStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now());
-    }
-
-    public User(UUID id, String email, String passwordHash, String fullName, String rut, String phoneNumber, Set<Role> roles, UserStatus status, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    // 1. CONSTRUCTOR PRIVADO
+    private User(UUID id, String email, String passwordHash, String fullName, Rut rut, String phoneNumber, Set<Role> roles, UserStatus status, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = Objects.requireNonNull(id, "User ID cannot be null");
         this.email = Objects.requireNonNull(email, "Email cannot be null");
         this.passwordHash = Objects.requireNonNull(passwordHash, "Password hash cannot be null");
         this.fullName = Objects.requireNonNull(fullName, "Full name cannot be null");
-        this.rut = parseAndValidateRut(rut);
+        this.rut = rut; // Puede ser null inicialmente si el usuario no lo ingresa en el registro rápido
         this.phoneNumber = phoneNumber;
         this.roles = new HashSet<>(Objects.requireNonNull(roles, "Role cannot be null"));
         if (this.roles.isEmpty()) throw new IllegalArgumentException("User must have at least one role");
@@ -34,32 +32,38 @@ public class User {
         this.updatedAt = Objects.requireNonNull(updatedAt, "UpdatedAt cannot be null");
     }
 
-    // METHOD HELPER para el constructor
+    // 2. FACTORY METHOD: Registro Nuevo
+    public static User registerNew(String email, String passwordHash, String fullName,
+                                   String rutInput, String phoneNumber, Role initialRole) {
+        Rut newRut = (rutInput != null && !rutInput.trim().isEmpty()) ? new Rut(rutInput) : null;
 
-    private String parseAndValidateRut(String rutInput) {
-        // Si viene un RUT y no está vacío, debe ser válido. Si no, queda null.
-        if (rutInput != null && !rutInput.trim().isEmpty()) {
-            String cleanRut = rutInput.trim().toUpperCase();
-            if (!cleanRut.matches(RUT_REGEX)) {
-                throw new IllegalArgumentException("Invalid RUT format. Expected format: 12345678-9");
-            }
-            return cleanRut;
-        }
-        return null; // Cae aquí pacíficamente si es null o vacío
+        return new User(
+                UUID.randomUUID(),
+                email,
+                passwordHash,
+                fullName,
+                newRut,
+                phoneNumber,
+                Set.of(initialRole),
+                UserStatus.ACTIVE,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
     }
 
-    // MÉTODOS Y REGLAS DE DOMINIO
+    // 3. FACTORY METHOD: Reconstitución desde la BD
+    public static User reconstitute(UUID id, String email, String passwordHash,
+                                    String fullName, String rutInput, String phoneNumber,
+                                    Set<Role> roles, UserStatus status,
+                                    LocalDateTime createdAt, LocalDateTime updatedAt) {
+        Rut existingRut = (rutInput != null) ? new Rut(rutInput) : null;
+        return new User(id, email, passwordHash, fullName, existingRut, phoneNumber, roles, status, createdAt, updatedAt);
+    }
 
-    public void updateRut(String newRut) {
-        Objects.requireNonNull(newRut, "RUT cannot be null");
-        if (newRut.trim().isEmpty()) {
-            throw new IllegalArgumentException("RUT cannot be empty");
-        }
-        String cleanRut = newRut.trim().toUpperCase();
-        if (!cleanRut.matches(RUT_REGEX)) {
-            throw new IllegalArgumentException("Invalid RUT format. Expected format: 12345678-9");
-        }
-        this.rut = cleanRut;
+    // === MÉTODOS Y REGLAS DE DOMINIO ===
+
+    public void updateRut(String rutString) {
+        this.rut = new Rut(rutString); // El Value Object valida automáticamente
         touch();
     }
 
@@ -122,12 +126,9 @@ public class User {
 
     public void removeRole(Role role) {
         Objects.requireNonNull(role, "Role cannot be null");
-
-        // Regla de Negocio: No se puede eliminar el único rol que le queda al usuario
         if (this.roles.size() == 1 && this.roles.contains(role)) {
             throw new IllegalStateException("Cannot remove the last remaining role of a user");
         }
-
         this.roles.remove(role);
         touch();
     }
@@ -140,21 +141,22 @@ public class User {
         return this.roles.contains(Role.TENANT);
     }
 
-    public void touch() {
+    private void touch() {
         this.updatedAt = LocalDateTime.now();
     }
 
     // GETTERS
-
     public UUID getId() { return id; }
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
     public String getFullName() { return fullName; }
-    public String getRut() { return rut; }
+
+    // Devuelve el String directo para mayor comodidad de quienes lo llamen (como el DTO)
+    public String getRut() { return rut != null ? rut.getValue() : null; }
+
     public String getPhoneNumber() { return phoneNumber; }
     public Set<Role> getRoles() { return Collections.unmodifiableSet(roles); }
     public UserStatus getStatus() { return status; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
-
 }

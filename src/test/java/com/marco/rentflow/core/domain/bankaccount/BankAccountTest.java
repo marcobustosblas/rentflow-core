@@ -15,7 +15,7 @@ public class BankAccountTest {
     @Test
     @DisplayName("Should create bank account successfully with valid RUT format")
     void shouldCreateBankAccountSuccessfully() {
-        BankAccount account = new BankAccount(userId, "Banco Estado", AccountType.CUENTA_RUT, "12345678", "12345678-9");
+        BankAccount account = BankAccount.create(userId, "Banco Estado", AccountType.CUENTA_RUT, "12345678", "12345678-9");
 
         assertNotNull(account.getId());
         assertEquals(userId, account.getUserId());
@@ -29,7 +29,7 @@ public class BankAccountTest {
     @Test
     @DisplayName("Should update account details successfully")
     void shouldUpdateDetailsSuccessfully() {
-        BankAccount account = new BankAccount(userId, "Banco Estado", AccountType.CUENTA_RUT, "12345678", "12345678-9");
+        BankAccount account = BankAccount.create(userId, "Banco Estado", AccountType.CUENTA_RUT, "12345678", "12345678-9");
 
         account.updateDetails("Banco Chile", AccountType.CUENTA_CORRIENTE, "98765432");
 
@@ -41,7 +41,7 @@ public class BankAccountTest {
     @Test
     @DisplayName("Should update holder RUT successfully when valid")
     void shouldUpdateHolderRutSuccessfully() {
-        BankAccount account = new BankAccount(userId, "Banco Estado", AccountType.CUENTA_RUT, "12345678", "12345678-9");
+        BankAccount account = BankAccount.create(userId, "Banco Estado", AccountType.CUENTA_RUT, "12345678", "12345678-9");
 
         account.updateHolderRut("98765432-1");
 
@@ -52,7 +52,7 @@ public class BankAccountTest {
     @DisplayName("Should throw IllegalArgumentException when holder RUT format is invalid")
     void shouldThrowExceptionWhenRutIsInvalid() {
         assertThrows(IllegalArgumentException.class, () ->
-                new BankAccount(userId, "Banco Estado", AccountType.CUENTA_RUT, "12345678", "123456789")
+                BankAccount.create(userId, "Banco Estado", AccountType.CUENTA_RUT, "12345678", "123456789")
         );
     }
 
@@ -60,14 +60,33 @@ public class BankAccountTest {
     @DisplayName("Should throw exception when required fields are blank or null")
     void shouldThrowExceptionWhenFieldsAreBlankOrNull() {
         assertThrows(NullPointerException.class, () ->
-                new BankAccount(userId, null, AccountType.CUENTA_RUT, "12345678", "12345678-9")
+                BankAccount.create(userId, null, AccountType.CUENTA_RUT, "12345678", "12345678-9")
         );
         assertThrows(IllegalArgumentException.class, () ->
-                new BankAccount(userId, "   ", AccountType.CUENTA_RUT, "12345678", "12345678-9")
+                BankAccount.create(userId, "   ", AccountType.CUENTA_RUT, "12345678", "12345678-9")
         );
         assertThrows(IllegalArgumentException.class, () ->
-                new BankAccount(userId, "Banco Estado", AccountType.CUENTA_RUT, "", "12345678-9")
+                BankAccount.create(userId, "Banco Estado", AccountType.CUENTA_RUT, "", "12345678-9")
         );
+    }
+
+    @Test
+    @DisplayName("Should reconstitute bank account successfully")
+    void shouldReconstituteBankAccountSuccessfully() {
+        UUID id = UUID.randomUUID();
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+        BankAccount account = BankAccount.reconstitute(
+                id, userId, "Banco BCI", AccountType.CUENTA_CORRIENTE, "555666777", "12345678-9", now, now
+        );
+
+        assertEquals(id, account.getId());
+        assertEquals(userId, account.getUserId());
+        assertEquals("Banco BCI", account.getBankName());
+        assertEquals(AccountType.CUENTA_CORRIENTE, account.getAccountType());
+        assertEquals("555666777", account.getAccountNumber());
+        assertEquals("12345678-9", account.getHolderRut());
+        assertEquals(now, account.getCreatedAt());
     }
 
 }

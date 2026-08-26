@@ -13,7 +13,7 @@ public interface PaymentRepository {
     PaymentRecord save(PaymentRecord payment);
 
     // Busca un registro de pago por su ID
-    Optional<PaymentRecord> findById(UUID id);
+    Optional<PaymentRecord> findById(String id);
 
     // Busca un pago usando la clave de idempotencia (vital para evitar duplicados)
     Optional<PaymentRecord> findByIdempotencyKey(String idempotencyKey);

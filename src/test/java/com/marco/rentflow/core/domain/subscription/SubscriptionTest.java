@@ -91,7 +91,7 @@ public class SubscriptionTest {
     @DisplayName("Should identify expired subscription when currentPeriodEnd is in the past")
     void shouldIdentifyExpiredSubscription() {
         LocalDateTime pastDate = LocalDateTime.now().minusDays(1);
-        Subscription expiredSubscription = new Subscription(
+        Subscription expiredSubscription = Subscription.reconstitute(
                 UUID.randomUUID(), userId, PlanType.PLAN_STARTED, BillingCycle.MONTHLY,
                 SubscriptionStatus.ACTIVE, 5, 500,
                 pastDate, // su fin de periodo fue AYER (pastDate)

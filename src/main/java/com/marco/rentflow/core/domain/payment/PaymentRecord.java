@@ -1,7 +1,6 @@
 package com.marco.rentflow.core.domain.payment;
 
 import com.marco.rentflow.core.domain.common.Money;
-import com.marco.rentflow.core.domain.property.Property;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,7 +12,7 @@ public class PaymentRecord {
     private final UUID id;
     private final UUID contractId;
     private final UUID tenantId;
-    private final String idempotencyKey;
+    private final String idempotencyKey; // String para pasarelas de pago
 
     private final LocalDate dueDate;
     private LocalDate paymentDate;
@@ -29,8 +28,30 @@ public class PaymentRecord {
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    // FACTORY Method para cobro pendiente
+    // 1. CONSTRUCTOR PRIVADO (El Guardián Absoluto)
+    private PaymentRecord(UUID id, UUID contractId, UUID tenantId, String idempotencyKey,
+                          LocalDate dueDate, LocalDate paymentDate,
+                          Money expectedAmount, Money paidAmount, Money lateFeeApplied,
+                          PaymentStatus status, String transactionReference,
+                          String paymentReceiptUrl,
+                          LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.id = Objects.requireNonNull(id, "PaymentRecord ID cannot be null");
+        this.contractId = Objects.requireNonNull(contractId, "Contract ID cannot be null");
+        this.tenantId = Objects.requireNonNull(tenantId, "Tenant ID cannot be null");
+        this.idempotencyKey = Objects.requireNonNull(idempotencyKey, "Idempotency key cannot be null");
+        this.dueDate = Objects.requireNonNull(dueDate, "Due date cannot be null");
+        this.paymentDate = paymentDate;
+        this.expectedAmount = Objects.requireNonNull(expectedAmount, "Expected amount cannot be null");
+        this.paidAmount = Objects.requireNonNull(paidAmount, "Paid amount cannot be null");
+        this.lateFeeApplied = Objects.requireNonNull(lateFeeApplied, "Late fee cannot be null");
+        this.status = Objects.requireNonNull(status, "Payment status cannot be null");
+        this.transactionReference = transactionReference;
+        this.paymentReceiptUrl = paymentReceiptUrl;
+        this.createdAt = Objects.requireNonNull(createdAt, "CreatedAt cannot be null");
+        this.updatedAt = Objects.requireNonNull(updatedAt, "UpdatedAt cannot be null");
+    }
 
+    // 2. FACTORY METHOD PARA NUEVOS (Capa de Aplicación)
     public static PaymentRecord createPending(UUID contractId, UUID tenantId,
                                               LocalDate dueDate, Money expectedAmount,
                                               String idempotencyKey) {
@@ -53,27 +74,20 @@ public class PaymentRecord {
         );
     }
 
-    // Constructor Completo (Reconstitución BD)
-    public PaymentRecord(UUID id, UUID contractId, UUID tenantId, String idempotencyKey,
-                         LocalDate dueDate, LocalDate paymentDate,
-                         Money expectedAmount, Money paidAmount, Money lateFeeApplied,
-                         PaymentStatus status, String transactionReference,
-                         String paymentReceiptUrl,
-                         LocalDateTime createdAt, LocalDateTime updatedAt) {
-        this.id = Objects.requireNonNull(id, "PaymentRecord ID cannot be null");
-        this.contractId = Objects.requireNonNull(contractId, "Contract ID cannot be null");
-        this.tenantId = Objects.requireNonNull(tenantId, "Tenant ID cannot be null");
-        this.idempotencyKey = Objects.requireNonNull(idempotencyKey, "Idempotency key cannot be null");
-        this.dueDate = Objects.requireNonNull(dueDate, "Due date cannot be null");
-        this.paymentDate = paymentDate;
-        this.expectedAmount = Objects.requireNonNull(expectedAmount, "Expected amount cannot be null");
-        this.paidAmount = Objects.requireNonNull(paidAmount, "Paid amount cannot be null");
-        this.lateFeeApplied = Objects.requireNonNull(lateFeeApplied, "Late fee cannot be null");
-        this.status = Objects.requireNonNull(status, "Payment status cannot be null");
-        this.transactionReference = transactionReference;
-        this.paymentReceiptUrl = paymentReceiptUrl;
-        this.createdAt = Objects.requireNonNull(createdAt, "CreatedAt cannot be null");
-        this.updatedAt = Objects.requireNonNull(updatedAt, "UpdatedAt cannot be null");
+    // 3. FACTORY METHOD PARA MAPEO DE BD (Capa de Infraestructura)
+    public static PaymentRecord reconstitute(UUID id, UUID contractId, UUID tenantId, String idempotencyKey,
+                                              LocalDate dueDate, LocalDate paymentDate,
+                                              Money expectedAmount, Money paidAmount, Money lateFeeApplied,
+                                              PaymentStatus status, String transactionReference,
+                                              String paymentReceiptUrl,
+                                              LocalDateTime createdAt, LocalDateTime updatedAt) {
+        return new PaymentRecord(
+                id, contractId, tenantId, idempotencyKey,
+                dueDate, paymentDate,
+                expectedAmount, paidAmount, lateFeeApplied,
+                status, transactionReference, paymentReceiptUrl,
+                createdAt, updatedAt
+        );
     }
 
     // MÉTODOS DE NEGOCIO Y TRANSICIÓN
@@ -91,19 +105,25 @@ public class PaymentRecord {
         Objects.requireNonNull(amountPaid, "Amount paid cannot be null");
         Objects.requireNonNull(actualPaymentDate, "Payment date cannot be null");
 
-        // Calcular el total esperado (arriendo + multa)
-        Money totalExpected = this.expectedAmount.add(
-            lateFee != null ? lateFee : new Money(BigDecimal.ZERO, expectedAmount.getCurrency())
-        );
+        if (this.expectedAmount.getCurrency() != amountPaid.getCurrency()) {
+            throw new IllegalArgumentException("Payment currency does not match expected currency");
+        }
 
-        // Validar que lo que pagó el amountPaid sea suficiente
-        if (amountPaid.getAmount().compareTo(totalExpected.getAmount()) < 0) {
+        // expectedAmount ya incluye ALL (Arriendo + Multa congelada)
+        if (amountPaid.getAmount().compareTo(this.expectedAmount.getAmount()) < 0) {
             throw new IllegalArgumentException("Amount paid is less than expected total");
         }
 
         this.paidAmount = amountPaid;
         this.paymentDate = actualPaymentDate;
-        this.lateFeeApplied = lateFee != null ? lateFee : new Money(BigDecimal.ZERO, expectedAmount.getCurrency());
+        if (lateFee != null) {
+            if (lateFee.getCurrency() != expectedAmount.getCurrency()) {
+                throw new IllegalArgumentException("Late fee currency does not match expected currency");
+            }
+            this.lateFeeApplied = lateFee;
+        } else {
+            this.lateFeeApplied = new Money(BigDecimal.ZERO, expectedAmount.getCurrency());
+        }
         this.transactionReference = transactionRef;
         this.paymentReceiptUrl = receiptUrl;
         this.status = PaymentStatus.PAID;

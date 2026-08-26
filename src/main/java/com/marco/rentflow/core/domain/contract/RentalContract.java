@@ -20,6 +20,7 @@ public class RentalContract {
     private Money monthlyRent; // Ingreso mensual recurrente
     private Money depositAmount; // Mes de Garantía (pago único inicial)
     private int paymentDueDay; // Día del mes en que vence el arriendo
+    private BigDecimal dailyPenaltyRate; // = new BigDecimal("0.01"); 1% diario
     private LocalDate startDate;
     private LocalDate endDate;
     private ContractStatus status;
@@ -29,47 +30,25 @@ public class RentalContract {
     private LocalDate lastReadjustmentDate;
 
 
-    // FACTORY METHOD (Creación desde cero)
-
-    public static RentalContract create(UUID propertyId, UUID tenantId, UUID landlordId,
-                                        Money monthlyRent, Money depositAmount,
-                                        int paymentDueDay, LocalDate startDate, LocalDate endDate) {
-
-        validateRentalPeriodHasMinimumOneMonth(startDate, endDate);
-        validateDepositLimit(monthlyRent, depositAmount);
-
-        return new RentalContract(
-                UUID.randomUUID(),
-                propertyId,
-                tenantId,
-                landlordId,
-                monthlyRent,
-                depositAmount,
-                paymentDueDay,
-                startDate,
-                endDate,
-                ContractStatus.ACTIVE,
-                LocalDateTime.now(),
-                LocalDateTime.now(),
-                null
-        );
-    }
-
-
-    // CONSTRUCTOR COMPLETO (Reconstitución BD)
-
-    public RentalContract(UUID id, UUID propertyId, UUID tenantId, UUID landlordId,
-                          Money monthlyRent, Money depositAmount, int paymentDueDay,
-                          LocalDate startDate, LocalDate endDate, ContractStatus status,
-                          LocalDateTime createdAt, LocalDateTime updatedAt, LocalDate lastReadjustmentDate) {
+    // 1. CONSTRUCTOR PRIVADO (El Guardián Absoluto)
+    private RentalContract(UUID id, UUID propertyId, UUID tenantId, UUID landlordId,
+                           Money monthlyRent, Money depositAmount, int paymentDueDay,
+                           BigDecimal dailyPenaltyRate, LocalDate startDate, LocalDate endDate,
+                           ContractStatus status, LocalDateTime createdAt, LocalDateTime updatedAt,
+                           LocalDate lastReadjustmentDate) {
 
         this.id = Objects.requireNonNull(id, "Contract ID cannot be null");
         this.propertyId = Objects.requireNonNull(propertyId, "Property ID cannot be null");
         this.tenantId = Objects.requireNonNull(tenantId, "Tenant ID cannot be null");
         this.landlordId = Objects.requireNonNull(landlordId, "Landlord ID cannot be null");
-
         this.monthlyRent = Objects.requireNonNull(monthlyRent, "Monthly rent cannot be null");
         this.depositAmount = Objects.requireNonNull(depositAmount, "Deposit amount cannot be null");
+
+        Objects.requireNonNull(dailyPenaltyRate, "Penalty rate cannot be null");
+        if (dailyPenaltyRate.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Penalty rate cannot be negative");
+        }
+        this.dailyPenaltyRate = dailyPenaltyRate;
 
         validateRentalPeriodHasMinimumOneMonth(startDate, endDate);
         validateDepositLimit(monthlyRent, depositAmount);
@@ -81,6 +60,45 @@ public class RentalContract {
         this.createdAt = Objects.requireNonNull(createdAt, "CreatedAt cannot be null");
         this.updatedAt = Objects.requireNonNull(updatedAt, "UpdatedAt cannot be null");
         this.lastReadjustmentDate = lastReadjustmentDate;
+    }
+
+    // 2. FACTORY METHOD PARA NUEVOS (Capa de Aplicación)
+    public static RentalContract create(UUID propertyId, UUID tenantId, UUID landlordId,
+                                        Money monthlyRent, Money depositAmount,
+                                        int paymentDueDay, BigDecimal dailyPenaltyRate,
+                                        LocalDate startDate, LocalDate endDate) {
+
+        return new RentalContract(
+                UUID.randomUUID(), propertyId, tenantId, landlordId,
+                monthlyRent, depositAmount, paymentDueDay, dailyPenaltyRate,
+                startDate, endDate, ContractStatus.ACTIVE,
+                LocalDateTime.now(), LocalDateTime.now(), null
+        );
+    }
+
+    public static final BigDecimal DEFAULT_DAILY_PENALTY_RATE = new BigDecimal("0.01");
+
+    public static RentalContract create(UUID propertyId, UUID tenantId, UUID landlordId,
+                                        Money monthlyRent, Money depositAmount,
+                                        int paymentDueDay,
+                                        LocalDate startDate, LocalDate endDate) {
+
+        return create(propertyId, tenantId, landlordId, monthlyRent, depositAmount, paymentDueDay, DEFAULT_DAILY_PENALTY_RATE, startDate, endDate);
+    }
+
+    // 3. FACTORY METHOD PARA MAPEO DE BD (Capa de Infraestructura)
+    public static RentalContract reconstitute(UUID id, UUID propertyId, UUID tenantId, UUID landlordId,
+                                              Money monthlyRent, Money depositAmount, int paymentDueDay,
+                                              BigDecimal dailyPenaltyRate, LocalDate startDate, LocalDate endDate,
+                                              ContractStatus status, LocalDateTime createdAt, LocalDateTime updatedAt,
+                                              LocalDate lastReadjustmentDate) {
+
+        return new RentalContract(
+                id, propertyId, tenantId, landlordId,
+                monthlyRent, depositAmount, paymentDueDay, dailyPenaltyRate,
+                startDate, endDate, status,
+                createdAt, updatedAt, lastReadjustmentDate
+        );
     }
 
 
@@ -96,13 +114,10 @@ public class RentalContract {
         return paymentDate.isAfter(dueDate);
     }
 
-    public Money calculateLateFee(LocalDate paymentDate, LocalDate dueDate, BigDecimal dailyPenaltyRate) {
+    public Money calculateLateFee(LocalDate paymentDate, LocalDate dueDate) {
         // step 1: Validar que ningún parámetro sea null
         Objects.requireNonNull(paymentDate, "Payment date cannot be null");
         Objects.requireNonNull(dueDate, "Due date cannot be null");
-        Objects.requireNonNull(dailyPenaltyRate, "Daily penalty rate cannot be null");
-        // ¿Dónde se pone dailyPenaltyRate? -> En el servicio o aplicación:
-        // BigDecimal dailyPenaltyRate = new BigDecimal("0.01"); // 1% diario
 
         // step 2: Verificar si está atrasado
         if (!isOverdue(paymentDate, dueDate)) {
@@ -112,12 +127,11 @@ public class RentalContract {
 
         // step 3: Calcular días de atraso:
         long daysOverdue = ChronoUnit.DAYS.between(dueDate, paymentDate);
-
-        // step 4: Calcular multa:
         BigDecimal daysMultiplier = BigDecimal.valueOf(daysOverdue);
 
+        // step 4: Calcular multa:
         BigDecimal penaltyAmount = this.monthlyRent.getAmount()
-                .multiply(dailyPenaltyRate)
+                .multiply(this.dailyPenaltyRate)
                 .multiply(daysMultiplier)
                 .setScale(2, RoundingMode.HALF_UP);
 
@@ -125,8 +139,8 @@ public class RentalContract {
         return new Money(penaltyAmount, this.monthlyRent.getCurrency());
     }
 
-    public Money calculateTotalWithPenalty(LocalDate paymentDate, LocalDate dueDate, BigDecimal dailyPenaltyRate) {
-        Money lateFee = calculateLateFee(paymentDate, dueDate, dailyPenaltyRate);
+    public Money calculateTotalWithPenalty(LocalDate paymentDate, LocalDate dueDate) {
+        Money lateFee = calculateLateFee(paymentDate, dueDate);
         return this.monthlyRent.add(lateFee); // Money garantiza que ambas monedas sean iguales
     }
 
@@ -155,6 +169,7 @@ public class RentalContract {
         touch();
     }
 
+    /**/
     public long getRemainingMonths() {
         if (LocalDate.now().isAfter(this.endDate)) {
             return 0;
@@ -165,6 +180,7 @@ public class RentalContract {
     public boolean isAboutToExpire(int monthsThreshold) {
         return getRemainingMonths() <= monthsThreshold;
     }
+    /**/
 
     public void terminate() {
         this.status = ContractStatus.TERMINATED;

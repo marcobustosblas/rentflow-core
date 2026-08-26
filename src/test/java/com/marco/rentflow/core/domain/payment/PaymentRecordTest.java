@@ -146,7 +146,7 @@ public class PaymentRecordTest {
                 BigDecimal dailyPenaltyRate = new BigDecimal("0.01"); // 1% diario
 
                 // El contrato calcula la multa exacta
-                Money lateFee = contract.calculateLateFee(paymentDate, dueDate, dailyPenaltyRate);
+                Money lateFee = contract.calculateLateFee(paymentDate, dueDate);
 
                 // Sumo el total y lo registramos
                 Money totalToPay = localStandardRent.add(lateFee);
@@ -241,7 +241,7 @@ public class PaymentRecordTest {
             LocalDateTime now = LocalDateTime.now();
             LocalDate payDate = LocalDate.now();
 
-            PaymentRecord payment = new PaymentRecord(
+            PaymentRecord payment = PaymentRecord.reconstitute(
                     UUID.randomUUID(), contractId, tenantId, idempotencyKey,
                     dueDate, payDate, rentAmount, rentAmount,
                     new Money(BigDecimal.ZERO, Currency.CLP),
