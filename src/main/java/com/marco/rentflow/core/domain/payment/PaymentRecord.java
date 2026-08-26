@@ -1,7 +1,6 @@
 package com.marco.rentflow.core.domain.payment;
 
 import com.marco.rentflow.core.domain.common.Money;
-import com.marco.rentflow.core.domain.property.Property;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
