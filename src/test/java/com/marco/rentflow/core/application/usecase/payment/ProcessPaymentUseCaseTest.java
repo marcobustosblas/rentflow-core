@@ -6,7 +6,9 @@ import com.marco.rentflow.core.domain.common.Money;
 import com.marco.rentflow.core.domain.payment.PaymentRecord;
 import com.marco.rentflow.core.domain.payment.PaymentStatus;
 import com.marco.rentflow.core.domain.payment.ports.out.PaymentRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -18,12 +20,12 @@ import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("ProcessPaymentUseCase - Pruebas de Procesamiento de Pago y Webhooks")
 public class ProcessPaymentUseCaseTest {
 
     @Mock
@@ -35,110 +37,153 @@ public class ProcessPaymentUseCaseTest {
     @InjectMocks
     private ProcessPaymentUseCase useCase;
 
-    @Test
-    @DisplayName("Debe lanzar excepción si el Token de Webpay no existe en la BD")
-    void shouldThrowExceptionWhenPaymentNotFound() {
+    private String idempotencyKey;
+    private Money expectedAmount;
+    private LocalDate paymentDate;
+    private UUID contractId;
+    private UUID tenantId;
 
-        // ARRANGE
-        String fakeToken = "TOKEN-FANTASMA-123";
-        Money amountPaid = new Money(new BigDecimal("500000"), Currency.CLP);
-        LocalDate paymentDate = LocalDate.now();
-
-        // WHEN
-        when(paymentRepository.findByIdempotencyKey(fakeToken))
-                .thenReturn(Optional.empty());
-
-        // ACT & ASSERT
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> useCase.execute(fakeToken, amountPaid, paymentDate)
-        );
-
-        assertEquals("Pending payment not found for idempotency key: " + fakeToken, exception.getMessage());
-        verify(paymentRepository, never()).save(any());
+    @BeforeEach
+    void setUp() {
+        idempotencyKey = "PAY-CONTRACT-123-2026-03";
+        expectedAmount = new Money(new BigDecimal("500000"), Currency.CLP);
+        paymentDate = LocalDate.now();
+        contractId = UUID.randomUUID();
+        tenantId = UUID.randomUUID();
     }
 
-    @Test
-    @DisplayName("Debe retornar el pago sin guardar si ya estaba en estado PAID")
-    void shouldReturnExistingPaymentWhenAlreadyPaid() {
+    @Nested
+    @DisplayName("1. Idempotencia y Resiliencia ante Reintentos de Red")
+    class IdempotencyAndResilienceTests {
 
-        // ARRANGE
-        String idempotencyKey = "PAY-123";
-        Money amountPaid = new Money(new BigDecimal("500000"), Currency.CLP);
-        LocalDate paymentDate = LocalDate.now();
+        @Test
+        @DisplayName("Debe lanzar excepción si el Token de Webpay / IdempotencyKey no existe en la BD")
+        void shouldThrowExceptionWhenPaymentNotFound() {
+            String fakeToken = "TOKEN-FANTASMA-123";
 
-        // Crear un pago y pasarle manualmente a PAID
-        PaymentRecord paidRecord = PaymentRecord.createPending(
-                UUID.randomUUID(), UUID.randomUUID(), paymentDate, amountPaid, idempotencyKey);
-        paidRecord.registerPayment(amountPaid, paymentDate, new Money(BigDecimal.ZERO, Currency.CLP), "REF", "url");
+            when(paymentRepository.findByIdempotencyKey(fakeToken))
+                    .thenReturn(Optional.empty());
 
-        // WHEN
-        when(paymentRepository.findByIdempotencyKey(idempotencyKey))
-                .thenReturn(Optional.of(paidRecord));
+            IllegalArgumentException exception = assertThrows(
+                    IllegalArgumentException.class,
+                    () -> useCase.execute(fakeToken, expectedAmount, paymentDate)
+            );
 
-        // ACT
-        PaymentRecord result = useCase.execute(idempotencyKey, amountPaid, paymentDate);
+            assertEquals("Pending payment not found for idempotency key: " + fakeToken, exception.getMessage());
+            verify(paymentRepository, never()).save(any());
+            verify(notificationSenderPort, never()).sendPaymentReceipt(any());
+        }
 
-        // ASSERT
-        assertEquals(PaymentStatus.PAID, result.getStatus());
-        verify(paymentRepository, never()).save(any());
-        verify(notificationSenderPort, never()).sendPaymentReceipt(any());
+        @Test
+        @DisplayName("Debe retornar el pago sin modificar ni re-notificar si ya estaba en estado PAID (Idempotencia pura)")
+        void shouldReturnExistingPaymentWhenAlreadyPaid() {
+            PaymentRecord paidRecord = PaymentRecord.createPending(
+                    contractId, tenantId, paymentDate, expectedAmount, idempotencyKey
+            );
+            paidRecord.registerPayment(expectedAmount, paymentDate, new Money(BigDecimal.ZERO, Currency.CLP), "REF-123", "receipt_url");
 
+            when(paymentRepository.findByIdempotencyKey(idempotencyKey))
+                    .thenReturn(Optional.of(paidRecord));
+
+            PaymentRecord result = useCase.execute(idempotencyKey, expectedAmount, paymentDate);
+
+            assertEquals(PaymentStatus.PAID, result.getStatus());
+            verify(paymentRepository, never()).save(any());
+            verify(notificationSenderPort, never()).sendPaymentReceipt(any());
+        }
     }
 
-    @Test
-    @DisplayName("Debe lanzar excepción si el monto pagado es menor al esperado")
-    void shouldThrowExceptionWhenPaymentIsInsufficient() {
+    @Nested
+    @DisplayName("2. Integridad Financiera y Validación de Fraude")
+    class FinancialIntegrityTests {
 
-        // ARRANGE
-        String idempotencyKey = "PAY-123";
-        Money expectedAmount = new Money(new BigDecimal("500000"), Currency.CLP);
-        Money insufficientAmount = new Money(new BigDecimal("400000"), Currency.CLP); // 100 mil menos
-        LocalDate paymentDate = LocalDate.now();
+        @Test
+        @DisplayName("Debe lanzar excepción si el monto pagado es menor al esperado (Rechazo de pago insuficiente)")
+        void shouldThrowExceptionWhenPaymentIsInsufficient() {
+            Money insufficientAmount = new Money(new BigDecimal("400000"), Currency.CLP); // 100 mil menos
+            PaymentRecord pendingRecord = PaymentRecord.createPending(
+                    contractId, tenantId, paymentDate, expectedAmount, idempotencyKey
+            );
 
-        PaymentRecord pendingRecord = PaymentRecord.createPending(
-                UUID.randomUUID(), UUID.randomUUID(), paymentDate, expectedAmount, idempotencyKey
-        );
+            when(paymentRepository.findByIdempotencyKey(idempotencyKey))
+                    .thenReturn(Optional.of(pendingRecord));
 
-        when(paymentRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.of(pendingRecord));
+            IllegalArgumentException exception = assertThrows(
+                    IllegalArgumentException.class,
+                    () -> useCase.execute(idempotencyKey, insufficientAmount, paymentDate)
+            );
 
-        // ACT & ASSERT
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> useCase.execute(idempotencyKey, insufficientAmount, paymentDate)
-        );
+            assertEquals("Amount paid is less than expected total", exception.getMessage());
+            verify(paymentRepository, never()).save(any());
+            verify(notificationSenderPort, never()).sendPaymentReceipt(any());
+        }
 
-        assertEquals("Amount paid is less than expected total", exception.getMessage());
-        verify(paymentRepository, never()).save(any());
+        @Test
+        @DisplayName("Debe rechazar el procesamiento si la moneda del pago no coincide con la moneda esperada del contrato")
+        void shouldThrowExceptionWhenCurrencyMismatch() {
+            Money usdAmount = new Money(new BigDecimal("500"), Currency.USD); // Moneda distinta (USD vs CLP)
+            PaymentRecord pendingRecord = PaymentRecord.createPending(
+                    contractId, tenantId, paymentDate, expectedAmount, idempotencyKey
+            );
+
+            when(paymentRepository.findByIdempotencyKey(idempotencyKey))
+                    .thenReturn(Optional.of(pendingRecord));
+
+            IllegalArgumentException exception = assertThrows(
+                    IllegalArgumentException.class,
+                    () -> useCase.execute(idempotencyKey, usdAmount, paymentDate)
+            );
+
+            assertEquals("Payment currency does not match expected currency", exception.getMessage());
+            verify(paymentRepository, never()).save(any());
+            verify(notificationSenderPort, never()).sendPaymentReceipt(any());
+        }
     }
 
-    @Test
-    @DisplayName("Debe registrar el pago, persistir y notificar exitosamente")
-    void shouldProcessPaymentSuccessfully() {
+    @Nested
+    @DisplayName("3. Procesamiento Exitoso de Pago")
+    class SuccessfulPaymentTests {
 
-        // ARRANGE
-        String idempotencyKey = "PAY-123";
-        Money amountPaid = new Money(new BigDecimal("500000"), Currency.CLP);
-        LocalDate paymentDate = LocalDate.now();
+        @Test
+        @DisplayName("Debe registrar el pago, persisitr con referencia de transacción y notificar al usuario")
+        void shouldProcessPaymentSuccessfullyWithReference() {
+            PaymentRecord pendingRecord = PaymentRecord.createPending(
+                    contractId, tenantId, paymentDate, expectedAmount, idempotencyKey
+            );
 
-        PaymentRecord pendingRecord = PaymentRecord.createPending(
-                UUID.randomUUID(), UUID.randomUUID(), paymentDate, amountPaid, idempotencyKey
-        );
+            when(paymentRepository.findByIdempotencyKey(idempotencyKey))
+                    .thenReturn(Optional.of(pendingRecord));
+            when(paymentRepository.save(any(PaymentRecord.class)))
+                    .thenReturn(pendingRecord);
 
-        // WHEN
-        when(paymentRepository.findByIdempotencyKey(idempotencyKey))
-                .thenReturn(Optional.of(pendingRecord));
-        when(paymentRepository.save(any(PaymentRecord.class)))
-                .thenReturn(pendingRecord);
+            PaymentRecord result = useCase.execute(idempotencyKey, expectedAmount, paymentDate, "TBK-TRANS-999", "https://receipts.rentflow.cl/doc.pdf");
 
-        // ACT
-        PaymentRecord result = useCase.execute(idempotencyKey, amountPaid, paymentDate, "TBK-123", "url.com");
+            assertEquals(PaymentStatus.PAID, result.getStatus());
+            assertEquals("TBK-TRANS-999", result.getTransactionReference());
+            assertEquals("https://receipts.rentflow.cl/doc.pdf", result.getPaymentReceiptUrl());
 
-        // ASSERT
-        assertEquals(PaymentStatus.PAID, result.getStatus());
-        assertEquals("TBK-123", result.getTransactionReference());
-        verify(paymentRepository, times(1)).save(pendingRecord); // Asegura que se guardó exactamente 1 vez
-        verify(notificationSenderPort, times(1)).sendPaymentReceipt(pendingRecord); // Asegura que se envió el correo
+            verify(paymentRepository, times(1)).save(pendingRecord);
+            verify(notificationSenderPort, times(1)).sendPaymentReceipt(pendingRecord);
+        }
+
+        @Test
+        @DisplayName("Debe permitir ejecutar la sobrecarga básica de 3 parámetros usando idempotencyKey como referencia")
+        void shouldProcessPaymentSuccessfullyWithBasicOverload() {
+            PaymentRecord pendingRecord = PaymentRecord.createPending(
+                    contractId, tenantId, paymentDate, expectedAmount, idempotencyKey
+            );
+
+            when(paymentRepository.findByIdempotencyKey(idempotencyKey))
+                    .thenReturn(Optional.of(pendingRecord));
+            when(paymentRepository.save(any(PaymentRecord.class)))
+                    .thenReturn(pendingRecord);
+
+            PaymentRecord result = useCase.execute(idempotencyKey, expectedAmount, paymentDate);
+
+            assertEquals(PaymentStatus.PAID, result.getStatus());
+            assertEquals(idempotencyKey, result.getTransactionReference());
+            verify(paymentRepository, times(1)).save(pendingRecord);
+            verify(notificationSenderPort, times(1)).sendPaymentReceipt(pendingRecord);
+        }
     }
-
 }
