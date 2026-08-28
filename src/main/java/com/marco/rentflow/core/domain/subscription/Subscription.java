@@ -121,9 +121,9 @@ public class Subscription {
     // Métodos auxiliares privados
     private static int calculateStorageMb(PlanType plan) {
         return switch (plan) {
-            case PLAN_STARTED -> 500;
-            case PLAN_PRO -> 5000;
-            case PLAN_ENTERPRISE -> 50000;
+            case STARTER -> 100;
+            case PRO -> 1000;
+            case ENTERPRISE -> 10000;
         };
     }
 

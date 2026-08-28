@@ -2,9 +2,9 @@ package com.marco.rentflow.core.domain.subscription;
 
 public enum PlanType {
 
-    PLAN_STARTED(5),     // Límite de 5 propiedades
-    PLAN_PRO(20),        // Límite de 20 propiedades
-    PLAN_ENTERPRISE(100); // Límite de 100 propiedades
+    STARTER(3),       // Hasta 3 propiedades ($27.900 CLP / mes)
+    PRO(7),           // Hasta 7 propiedades ($64.900 CLP / mes)
+    ENTERPRISE(13);   // Hasta 13 propiedades ($119.900 CLP / mes)
 
     private final int propertyLimit;
 
