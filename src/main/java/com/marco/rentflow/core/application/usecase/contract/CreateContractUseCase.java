@@ -1,6 +1,5 @@
 package com.marco.rentflow.core.application.usecase.contract;
 
-import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.core.domain.common.Money;
 import com.marco.rentflow.core.domain.contract.RentalContract;
 import com.marco.rentflow.core.domain.contract.ports.out.ContractRepository;
@@ -11,6 +10,7 @@ import com.marco.rentflow.core.domain.user.UserRepository;
 
 import java.time.LocalDate;
 import java.util.UUID;
+import java.math.BigDecimal;
 
 public class CreateContractUseCase {
 
@@ -27,7 +27,7 @@ public class CreateContractUseCase {
     /* 1 */
     public RentalContract execute( UUID propertyId, UUID tenantId, UUID landlordId,
                         Money standardRent, Money standardDeposit,
-                        int paymentDueDay, java.math.BigDecimal dailyPenaltyRate,
+                        int paymentDueDay, BigDecimal dailyPenaltyRate,
                         LocalDate startDate, LocalDate endDate) {
 
         /* Buscar la propiedad */

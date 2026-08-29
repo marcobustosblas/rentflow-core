@@ -5,7 +5,7 @@ import com.marco.rentflow.infrastructure.adapters.in.web.property.dto.PropertyRe
 
 public class PropertyRestMapper {
 
-    public static PropertyResponseDTO toRequestDTO(Property property) {
+    public static PropertyResponseDTO toResponseDTO(Property property) {
 
         if (property == null) {
             return null;

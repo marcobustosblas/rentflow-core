@@ -1,4 +1,4 @@
-# 🚀 Visión General del Proyecto: RentFlowAI
+#  Visión General del Proyecto: RentFlowAI
 
 **Documento Master de Propósito, Alcance, Monetización B2B, Dockerización y Estrategia Cloud (AWS CLF-C02)**
 

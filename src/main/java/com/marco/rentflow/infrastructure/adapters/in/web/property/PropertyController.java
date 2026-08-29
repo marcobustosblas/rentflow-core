@@ -45,7 +45,7 @@ public class PropertyController {
                 requestDTO.getBankAccountId()
         );
         // c- Traducir la Entidad de vuelta a un DTO seguro para la web
-        PropertyResponseDTO responseDTO = PropertyRestMapper.toRequestDTO(createdProperty);
+        PropertyResponseDTO responseDTO = PropertyRestMapper.toResponseDTO(createdProperty);
         // d- Devolver HTTP 201 (Created) con el JSON mapeado
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
     }
