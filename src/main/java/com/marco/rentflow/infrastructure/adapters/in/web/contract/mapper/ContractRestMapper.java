@@ -1,6 +1,5 @@
 package com.marco.rentflow.infrastructure.adapters.in.web.contract.mapper;
 
-import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.core.domain.contract.RentalContract;
 import com.marco.rentflow.infrastructure.adapters.in.web.contract.dto.ContractResponseDTO;
 

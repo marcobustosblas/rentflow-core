@@ -21,25 +21,15 @@
     </properties>
 
     <dependencies>
-        <!-- JUnit Jupiter API: Permite escribir los tests unitarios con anotaciones -->
+        <!-- Núcleo para construir aplicaciones web con Spring Boot. -->
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <version>5.10.2</version>
-            <scope>test</scope>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-        <!-- JUnit Jupiter Engine: El motor que ejecuta los tests dentro del ciclo de Maven -->
+        <!-- Spring Boot Test -->
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <version>5.10.2</version>
-            <scope>test</scope>
-        </dependency>
-        <!-- JUnit Jupiter Params - ¡NECESARIO PARA TESTS PARAMETRIZADOS! -->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-params</artifactId>
-            <version>5.10.2</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- Mockito Core: Para crear los proxies dinámicos (muñecos de ventrílocuo) de las interfaces -->
@@ -55,11 +45,6 @@
             <artifactId>mockito-junit-jupiter</artifactId>
             <version>5.11.0</version>
             <scope>test</scope>
-        </dependency>
-        <!-- Núcleo para construir aplicaciones web con Spring Boot. -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
     </dependencies>
 
