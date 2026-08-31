@@ -35,7 +35,8 @@ Antes de detallar los flujos, estas son las reglas inquebrantables del sistema q
 5. El sistema instancia una nueva `Property` con estado `AVAILABLE`.
 6. Si se proporciona un `bankAccountId`, el sistema lo asigna vía `property.assignPayoutAccount()`.
 7. El sistema persiste la `Property` a través de `PropertyRepository`.
-8. Retorna la propiedad creada.
+8. Retorna la propiedad creada. El Repositorio le devuelve al Caso de Uso la entidad guardada 
+   (ahora con un ID real de la base de datos). El Caso de Uso le devuelve esa misma entidad al Controller.
 
 ### Flujos Alternativos
 - **1a. Límite de Plan Excedido:** Si `canAddProperty` retorna `false`, el sistema lanza `IllegalStateException` (HTTP 403 Forbidden) invitando al usuario a mejorar su plan.

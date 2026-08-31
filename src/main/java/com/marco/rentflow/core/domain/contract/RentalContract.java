@@ -280,13 +280,30 @@ public class RentalContract {
     }
 
     // GETTERS
-    public UUID getId() { return id; }
-    public UUID getPropertyId() { return propertyId; }
-    public UUID getTenantId() { return tenantId; }
-    public UUID getLandlordId() { return landlordId; }
-    public Money getMonthlyRent() { return monthlyRent; }
-    public Money getDepositAmount() { return depositAmount; }
-    public int getPaymentDueDay() { return paymentDueDay; }
+    public UUID getId() {
+        return id;
+    }
+    public UUID getPropertyId() {
+        return propertyId;
+    }
+    public UUID getTenantId() {
+        return tenantId;
+    }
+    public UUID getLandlordId() {
+        return landlordId;
+    }
+    public Money getMonthlyRent() {
+        return monthlyRent;
+    }
+    public Money getDepositAmount() {
+        return depositAmount;
+    }
+    public int getPaymentDueDay() {
+        return paymentDueDay;
+    }
+    public BigDecimal getDailyPenaltyRate() {
+        return dailyPenaltyRate;
+    }
     public LocalDate getStartDate() { return startDate; }
     public LocalDate getEndDate() { return endDate; }
     public ContractStatus getStatus() { return status; }
