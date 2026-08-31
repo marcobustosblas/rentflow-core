@@ -24,7 +24,7 @@ En las etapas iniciales del proyecto, se consideró la alternativa simplista de 
 
 ### 2. Análisis Técnico: ¿Por qué mezclar ambos cobros destruye la Cohesión del Dominio?
 
-Intentar forzar los pagos de suscripciones SaaS dentro de la estructura de un contrato de arriendo representa un **Anti-Patrón de Modelado** que atenta contra las reglas de **Domain-Driven Design (DDD)** por las siguientes razones fundamentales:
+Intentar forzar los pagos de suscripciones SaaS dentro de la estructura de un *contrato de arriendo* representa un **Anti-Patrón de Modelado** que atenta contra las reglas de **Domain-Driven Design (DDD)** por las siguientes razones fundamentales:
 
 #### 2.1. Violación del Lenguaje Ubicuo (Ubiquitous Language)
 En el dominio inmobiliario, las entidades y términos poseen significados estrictos:
