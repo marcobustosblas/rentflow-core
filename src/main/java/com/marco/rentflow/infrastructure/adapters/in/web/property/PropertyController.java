@@ -8,6 +8,7 @@ import com.marco.rentflow.core.domain.property.Property;
 import com.marco.rentflow.infrastructure.adapters.in.web.property.dto.PropertyRequestDTO;
 import com.marco.rentflow.infrastructure.adapters.in.web.property.dto.PropertyResponseDTO;
 import com.marco.rentflow.infrastructure.adapters.in.web.property.mapper.PropertyRestMapper;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,7 +32,7 @@ public class PropertyController {
     }
 
     @PostMapping
-    public ResponseEntity<PropertyResponseDTO> create(@RequestBody PropertyRequestDTO requestDTO) {
+    public ResponseEntity<PropertyResponseDTO> create(@Valid @RequestBody PropertyRequestDTO requestDTO) {
         // a- Transformar datos del front al value object del dominio
         Money basePrice = new Money(
                 requestDTO.getMonthlyRentAmount(),
@@ -60,7 +61,7 @@ public class PropertyController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<PropertyResponseDTO> updateProperty(@PathVariable UUID id, @RequestBody PropertyRequestDTO requestDTO) {
+    public ResponseEntity<PropertyResponseDTO> updateProperty(@Valid @PathVariable UUID id, @RequestBody PropertyRequestDTO requestDTO) {
         // En el futuro: UpdatePropertyUseCase...
         return ResponseEntity.ok().build();
     }

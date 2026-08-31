@@ -7,6 +7,7 @@ import com.marco.rentflow.core.domain.contract.RentalContract;
 import com.marco.rentflow.infrastructure.adapters.in.web.contract.dto.ContractRequestDTO;
 import com.marco.rentflow.infrastructure.adapters.in.web.contract.dto.ContractResponseDTO;
 import com.marco.rentflow.infrastructure.adapters.in.web.contract.mapper.ContractRestMapper;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,7 +26,7 @@ public class ContractController {
     }
 
     @PostMapping
-    public ResponseEntity<ContractResponseDTO> create(@RequestBody ContractRequestDTO requestDTO) {
+    public ResponseEntity<ContractResponseDTO> create(@Valid @RequestBody ContractRequestDTO requestDTO) {
 
         Currency currency = Currency.valueOf(requestDTO.getCurrency());
         Money monthlyRent = new Money(requestDTO.getMonthlyRentAmount(), currency);

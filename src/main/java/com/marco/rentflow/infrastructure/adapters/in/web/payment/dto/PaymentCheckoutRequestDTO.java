@@ -1,12 +1,19 @@
 package com.marco.rentflow.infrastructure.adapters.in.web.payment.dto;
 
+import jakarta.validation.constraints.NotNull;
+
 import java.time.LocalDate;
 import java.util.UUID;
 
 public class PaymentCheckoutRequestDTO {
 
+    @NotNull(message = "Tenant ID is required")
     private UUID tenantId;
+
+    @NotNull(message = "Contract ID is required")
     private UUID contractId;
+
+    @NotNull(message = "Payment date is required")
     private LocalDate paymentDate;
 
     public PaymentCheckoutRequestDTO() {}

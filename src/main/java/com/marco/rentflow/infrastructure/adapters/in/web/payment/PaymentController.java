@@ -7,6 +7,7 @@ import com.marco.rentflow.core.domain.common.Money;
 import com.marco.rentflow.infrastructure.adapters.in.web.payment.dto.PaymentCheckoutRequestDTO;
 import com.marco.rentflow.infrastructure.adapters.in.web.payment.dto.PaymentCheckoutResponseDTO;
 import com.marco.rentflow.infrastructure.adapters.in.web.payment.dto.PaymentWebhookRequestDTO;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,7 +29,7 @@ public class PaymentController {
     }
 
     @PostMapping("/checkout")
-    public ResponseEntity<PaymentCheckoutResponseDTO> initiateCheckout(@RequestBody PaymentCheckoutRequestDTO request) {
+    public ResponseEntity<PaymentCheckoutResponseDTO> initiateCheckout(@Valid @RequestBody PaymentCheckoutRequestDTO request) {
         String checkoutUrl = checkoutUseCase.execute(
                 request.getTenantId(),
                 request.getContractId(),
@@ -38,7 +39,7 @@ public class PaymentController {
     }
 
     @PostMapping("/webhook")
-    public ResponseEntity<Void> handleWebhook(@RequestBody PaymentWebhookRequestDTO request) {
+    public ResponseEntity<Void> handleWebhook(@Valid @RequestBody PaymentWebhookRequestDTO request) {
         Currency currency = Currency.valueOf(request.getCurrency());
         Money amountPaid = new Money(request.getAmountPaid(), currency);
 
