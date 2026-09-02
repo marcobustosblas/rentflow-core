@@ -197,8 +197,8 @@ package "Domain Layer" {
         - LocalDate dueDate
         - LocalDate paymentDate
         - BigDecimal amountPaid
-        - Money expectedAmount
         - Money paidAmount
+        - Money expectedAmount
         - Money lateFeeApplied
         - PaymentStatus status
         - String transactionReference
