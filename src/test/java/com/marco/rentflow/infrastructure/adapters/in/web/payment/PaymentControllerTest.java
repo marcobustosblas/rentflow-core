@@ -69,6 +69,7 @@ class PaymentControllerTest {
         requestDTO.setCurrency("CLP");
         requestDTO.setPaymentDate(LocalDate.now());
         requestDTO.setTransactionRef("TX-999");
+        requestDTO.setReceiptUrl("https://receipts.org/rx-999");
 
         // processPaymentUseCase retorna void en el controller (lo ignoro), pero simulo éxito devolviendo un objeto dummy o nada.
         // Como no asigno el retorno en el Controller, Mockito devuelve null por defecto, lo cual es perfecto.
