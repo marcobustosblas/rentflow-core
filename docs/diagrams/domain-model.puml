@@ -39,9 +39,9 @@ package "Domain Layer" {
     }
 
     enum AccountType {
-        RUT
-        CORRIENTE
-        AHORRO
+        CUENTA_RUT
+        CUENTA_CORRIENTE
+        CUENTA_AHORRO
     }
 
     enum PropertyStatus {
