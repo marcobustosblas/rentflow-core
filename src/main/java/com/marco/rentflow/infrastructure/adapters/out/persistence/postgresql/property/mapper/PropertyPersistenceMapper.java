@@ -7,14 +7,14 @@ import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.property.PropertyJpaEntity;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.user.UserJpaEntity;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.bankaccount.BankAccountJpaEntity;
+import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
+@Component
 public class PropertyPersistenceMapper {
 
-    private PropertyPersistenceMapper() {}
-
-    public static PropertyJpaEntity toJpaEntity(Property domain) {
+    public PropertyJpaEntity toJpaEntity(Property domain) {
         if (domain == null) return null;
 
         // Crear proxy del Landlord
@@ -39,7 +39,7 @@ public class PropertyPersistenceMapper {
         );
     }
 
-    public static Property toDomain(PropertyJpaEntity entity) {
+    public Property toDomain(PropertyJpaEntity entity) {
         if (entity == null) return null;
 
         Money basePrice = new Money(
