@@ -38,7 +38,7 @@ public class UserJpaEntity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    protected UserJpaEntity() {}
+    public UserJpaEntity() {}
 
     public UserJpaEntity(UUID id, String email, String passwordHash, String fullName, String rut, String phoneNumber, String roles, String status, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
@@ -54,14 +54,84 @@ public class UserJpaEntity {
     }
 
     // Getters y métodos @PrePersist / @PreUpdate...
-    public UUID getId() { return id; }
-    public String getEmail() { return email; }
-    public String getPasswordHash() { return passwordHash; }
-    public String getFullName() { return fullName; }
-    public String getRut() { return rut; }
-    public String getPhoneNumber() { return phoneNumber; }
-    public String getRoles() { return roles; }
-    public String getStatus() { return status; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public String getRut() {
+        return rut;
+    }
+
+    public void setRut(String rut) {
+        this.rut = rut;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public String getRoles() {
+        return roles;
+    }
+
+    public void setRoles(String roles) {
+        this.roles = roles;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }

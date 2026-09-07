@@ -41,7 +41,7 @@ public class PropertyJpaEntity {
     @Column(name = "updated_at", nullable = false)
     private ZonedDateTime updatedAt;
 
-    protected PropertyJpaEntity() {}
+    public PropertyJpaEntity() {}
 
     public PropertyJpaEntity(UUID id, UserJpaEntity landlord, BankAccountJpaEntity payoutAccount, String address, String status, BigDecimal basePrice, String currency) {
         this.id = id;

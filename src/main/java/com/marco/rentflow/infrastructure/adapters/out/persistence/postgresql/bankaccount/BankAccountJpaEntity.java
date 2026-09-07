@@ -36,7 +36,7 @@ public class BankAccountJpaEntity {
     @Column(name = "updated_at", nullable = false)
     private ZonedDateTime updatedAt;
 
-    protected BankAccountJpaEntity() {}
+    public BankAccountJpaEntity() {}
 
     public BankAccountJpaEntity(UUID id, UserJpaEntity user, String accountType, String bankName, String accountNumber, String rut) {
         this.id = id;

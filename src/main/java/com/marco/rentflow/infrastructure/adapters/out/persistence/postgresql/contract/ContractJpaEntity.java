@@ -47,6 +47,9 @@ public class ContractJpaEntity {
     @Column(name = "daily_penalty", nullable = false, precision = 19, scale = 4)
     private BigDecimal dailyPenalty;
 
+    @Column(name = "last_readjustment_date")
+    private LocalDate lastReadjustmentDate;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private ZonedDateTime createdAt;
 
@@ -55,7 +58,7 @@ public class ContractJpaEntity {
 
     protected ContractJpaEntity() {}
 
-    public ContractJpaEntity(UUID id, PropertyJpaEntity property, UserJpaEntity tenant, String status, LocalDate startDate, LocalDate endDate, Integer dueDay, BigDecimal rentAmount, BigDecimal depositAmount, String currency, BigDecimal dailyPenalty) {
+    public ContractJpaEntity(UUID id, PropertyJpaEntity property, UserJpaEntity tenant, String status, LocalDate startDate, LocalDate endDate, Integer dueDay, BigDecimal rentAmount, BigDecimal depositAmount, String currency, BigDecimal dailyPenalty, LocalDate lastReadjustmentDate) {
         this.id = id;
         this.property = property;
         this.tenant = tenant;
@@ -67,6 +70,7 @@ public class ContractJpaEntity {
         this.depositAmount = depositAmount;
         this.currency = currency;
         this.dailyPenalty = dailyPenalty;
+        this.lastReadjustmentDate = lastReadjustmentDate;
     }
 
     @PrePersist
@@ -166,6 +170,14 @@ public class ContractJpaEntity {
 
     public void setDailyPenalty(BigDecimal dailyPenalty) {
         this.dailyPenalty = dailyPenalty;
+    }
+
+    public LocalDate getLastReadjustmentDate() {
+        return lastReadjustmentDate;
+    }
+
+    public void setLastReadjustmentDate(LocalDate lastReadjustmentDate) {
+        this.lastReadjustmentDate = lastReadjustmentDate;
     }
 
     public ZonedDateTime getCreatedAt() {

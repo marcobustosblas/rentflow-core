@@ -66,6 +66,7 @@ CREATE TABLE contracts (
     deposit_amount NUMERIC(19, 4) NOT NULL, -- Agregado
     currency VARCHAR(3) NOT NULL, -- Agregado
     daily_penalty NUMERIC(19, 4) NOT NULL,
+    last_readjustment_date DATE, -- Agregado
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
