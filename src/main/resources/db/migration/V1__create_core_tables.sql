@@ -81,8 +81,11 @@ CREATE TABLE payments (
     amount_paid NUMERIC(19, 4),
     currency VARCHAR(3) NOT NULL, -- Agregado
     late_fee_applied NUMERIC(19, 4) DEFAULT 0,
-    payment_date TIMESTAMP WITH TIME ZONE,
+    due_date DATE, -- Agregado: Fecha límite original
+    payment_date TIMESTAMP, -- Removido el TIME ZONE para encajar perfecto con LocalDateTime
     idempotency_key VARCHAR(255) UNIQUE NOT NULL,
+    transaction_reference VARCHAR(255), -- Agregado: Referencia de pasarela
+    payment_receipt_url VARCHAR(500), -- Agregado: URL del recibo
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
