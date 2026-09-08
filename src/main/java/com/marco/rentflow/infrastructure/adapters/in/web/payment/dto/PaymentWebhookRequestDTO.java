@@ -22,7 +22,7 @@ public class PaymentWebhookRequestDTO {
     private String currency;
 
     @NotNull(message = "Payment date is required")
-    private LocalDateTime paymentDate; // Actualizado a LocalDateTime
+    private LocalDateTime paymentDate; // Actualizado a LocalDateTime (07-09-26)
 
     @NotBlank(message = "Transaction reference is required")
     private String transactionRef;

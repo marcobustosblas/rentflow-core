@@ -91,7 +91,12 @@ public class BankAccount {
     public AccountType getAccountType() { return accountType; }
     public String getAccountNumber() { return accountNumber; }
     public String getHolderRut() { return holderRut; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
 }
 
 /*
