@@ -10,14 +10,17 @@ import java.util.UUID;
 
 public class PaymentRecord {
     private final UUID id;
-    private final UUID contractId;
-    private final UUID tenantId;
-    private final String idempotencyKey; // String para pasarelas de pago
+
+    // Asociación Polimórfica (Agnóstica)
+    private final UUID referenceId;
+    private final PaymentTarget target;
+
+    private final String idempotencyKey;
 
     private final LocalDate dueDate;
-    private LocalDate paymentDate;
+    private LocalDateTime paymentDate; // Cambiado a LocalDateTime para mayor precisión en transacciones
 
-    private Money paidAmount;
+    private Money amountPaid; // Renombrado para alinear con BD y Mapper
     private final Money expectedAmount;
     private Money lateFeeApplied;
 
@@ -29,21 +32,21 @@ public class PaymentRecord {
     private LocalDateTime updatedAt;
 
     // 1. CONSTRUCTOR PRIVADO (El Guardián Absoluto)
-    private PaymentRecord(UUID id, UUID contractId, UUID tenantId, String idempotencyKey,
-                          LocalDate dueDate, LocalDate paymentDate,
-                          Money expectedAmount, Money paidAmount, Money lateFeeApplied,
+    private PaymentRecord(UUID id, UUID referenceId, PaymentTarget target, String idempotencyKey,
+                          LocalDate dueDate, LocalDateTime paymentDate,
+                          Money expectedAmount, Money amountPaid, Money lateFeeApplied,
                           PaymentStatus status, String transactionReference,
                           String paymentReceiptUrl,
                           LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = Objects.requireNonNull(id, "PaymentRecord ID cannot be null");
-        this.contractId = Objects.requireNonNull(contractId, "Contract ID cannot be null");
-        this.tenantId = Objects.requireNonNull(tenantId, "Tenant ID cannot be null");
+        this.referenceId = Objects.requireNonNull(referenceId, "Reference ID cannot be null");
+        this.target = Objects.requireNonNull(target, "Payment target cannot be null");
         this.idempotencyKey = Objects.requireNonNull(idempotencyKey, "Idempotency key cannot be null");
-        this.dueDate = Objects.requireNonNull(dueDate, "Due date cannot be null");
+        this.dueDate = dueDate; // Puede ser null si es un pago inmediato (ej. Suscripción instantánea)
         this.paymentDate = paymentDate;
         this.expectedAmount = Objects.requireNonNull(expectedAmount, "Expected amount cannot be null");
-        this.paidAmount = Objects.requireNonNull(paidAmount, "Paid amount cannot be null");
-        this.lateFeeApplied = Objects.requireNonNull(lateFeeApplied, "Late fee cannot be null");
+        this.amountPaid = amountPaid; // Puede ser null si está PENDING
+        this.lateFeeApplied = lateFeeApplied;
         this.status = Objects.requireNonNull(status, "Payment status cannot be null");
         this.transactionReference = transactionReference;
         this.paymentReceiptUrl = paymentReceiptUrl;
@@ -52,20 +55,19 @@ public class PaymentRecord {
     }
 
     // 2. FACTORY METHOD PARA NUEVOS (Capa de Aplicación)
-    public static PaymentRecord createPending(UUID contractId, UUID tenantId,
+    public static PaymentRecord createPending(UUID referenceId, PaymentTarget target,
                                               LocalDate dueDate, Money expectedAmount,
                                               String idempotencyKey) {
-        Money zeroFee = new Money(BigDecimal.ZERO, expectedAmount.getCurrency());
         return new PaymentRecord(
                 UUID.randomUUID(),
-                contractId,
-                tenantId,
+                referenceId,
+                target,
                 idempotencyKey,
                 dueDate,
                 null,
                 expectedAmount,
-                zeroFee,
-                zeroFee,
+                null, // Aún no hay monto pagado
+                null, // Aún no hay multas aplicadas
                 PaymentStatus.PENDING,
                 null,
                 null,
@@ -75,25 +77,25 @@ public class PaymentRecord {
     }
 
     // 3. FACTORY METHOD PARA MAPEO DE BD (Capa de Infraestructura)
-    public static PaymentRecord reconstitute(UUID id, UUID contractId, UUID tenantId, String idempotencyKey,
-                                              LocalDate dueDate, LocalDate paymentDate,
-                                              Money expectedAmount, Money paidAmount, Money lateFeeApplied,
-                                              PaymentStatus status, String transactionReference,
-                                              String paymentReceiptUrl,
-                                              LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public static PaymentRecord reconstitute(UUID id, UUID referenceId, PaymentTarget target,
+                                             String idempotencyKey, LocalDate dueDate, LocalDateTime paymentDate,
+                                             Money expectedAmount, Money amountPaid, Money lateFeeApplied,
+                                             PaymentStatus status, String transactionReference,
+                                             String paymentReceiptUrl,
+                                             LocalDateTime createdAt, LocalDateTime updatedAt) {
         return new PaymentRecord(
-                id, contractId, tenantId, idempotencyKey,
+                id, referenceId, target, idempotencyKey,
                 dueDate, paymentDate,
-                expectedAmount, paidAmount, lateFeeApplied,
+                expectedAmount, amountPaid, lateFeeApplied,
                 status, transactionReference, paymentReceiptUrl,
                 createdAt, updatedAt
         );
     }
 
-    // MÉTODOS DE NEGOCIO Y TRANSICIÓN
+    // === MÉTODOS DE NEGOCIO Y TRANSICIÓN ===
 
-    public void registerPayment(Money amountPaid,
-                                LocalDate actualPaymentDate,
+    public void registerPayment(Money newAmountPaid,
+                                LocalDateTime actualPaymentDate,
                                 Money lateFee,
                                 String transactionRef,
                                 String receiptUrl) {
@@ -102,20 +104,21 @@ public class PaymentRecord {
             throw new IllegalStateException("Payment has already been settled");
         }
 
-        Objects.requireNonNull(amountPaid, "Amount paid cannot be null");
+        Objects.requireNonNull(newAmountPaid, "Amount paid cannot be null");
         Objects.requireNonNull(actualPaymentDate, "Payment date cannot be null");
 
-        if (this.expectedAmount.getCurrency() != amountPaid.getCurrency()) {
+        if (this.expectedAmount.getCurrency() != newAmountPaid.getCurrency()) {
             throw new IllegalArgumentException("Payment currency does not match expected currency");
         }
 
-        // expectedAmount ya incluye ALL (Arriendo + Multa congelada)
-        if (amountPaid.getAmount().compareTo(this.expectedAmount.getAmount()) < 0) {
+        // expectedAmount ya incluye el total esperado base
+        if (newAmountPaid.getAmount().compareTo(this.expectedAmount.getAmount()) < 0) {
             throw new IllegalArgumentException("Amount paid is less than expected total");
         }
 
-        this.paidAmount = amountPaid;
+        this.amountPaid = newAmountPaid;
         this.paymentDate = actualPaymentDate;
+
         if (lateFee != null) {
             if (lateFee.getCurrency() != expectedAmount.getCurrency()) {
                 throw new IllegalArgumentException("Late fee currency does not match expected currency");
@@ -124,6 +127,7 @@ public class PaymentRecord {
         } else {
             this.lateFeeApplied = new Money(BigDecimal.ZERO, expectedAmount.getCurrency());
         }
+
         this.transactionReference = transactionRef;
         this.paymentReceiptUrl = receiptUrl;
         this.status = PaymentStatus.PAID;
@@ -131,7 +135,7 @@ public class PaymentRecord {
     }
 
     public void markAsOverdue(LocalDate currentDate) {
-        if (this.status == PaymentStatus.PENDING && currentDate.isAfter(this.dueDate)) {
+        if (this.status == PaymentStatus.PENDING && this.dueDate != null && currentDate.isAfter(this.dueDate)) {
             this.status = PaymentStatus.OVERDUE;
         }
         touch();
@@ -145,7 +149,7 @@ public class PaymentRecord {
         touch();
     }
 
-    // MÉTODOS DE CONSULTA
+    // === MÉTODOS DE CONSULTA ===
 
     public boolean isPaid() {
         return this.status == PaymentStatus.PAID;
@@ -158,46 +162,39 @@ public class PaymentRecord {
     public boolean isPending() {
         return this.status == PaymentStatus.PENDING;
     }
-    // es bueno evaluar los 2 caminos, boolean puede ser true o false
 
     public Money getTotalPaid() {
-        if (this.status != PaymentStatus.PAID) {
+        if (this.status != PaymentStatus.PAID || this.amountPaid == null) {
             return new Money(BigDecimal.ZERO, expectedAmount.getCurrency());
         }
-        return this.paidAmount;
+        return this.amountPaid;
     }
 
     public Money getTotalExpected() {
-        return this.expectedAmount.add(this.lateFeeApplied);
+        Money total = this.expectedAmount;
+        if (this.lateFeeApplied != null) {
+            total = total.add(this.lateFeeApplied);
+        }
+        return total;
     }
 
     private void touch() {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // GETTERS
+    // === GETTERS ===
     public UUID getId() { return id; }
-    public UUID getContractId() { return contractId; }
-    public UUID getTenantId() { return tenantId; }
+    public UUID getReferenceId() { return referenceId; }
+    public PaymentTarget getTarget() { return target; }
     public String getIdempotencyKey() { return idempotencyKey; }
     public LocalDate getDueDate() { return dueDate; }
-    public LocalDate getPaymentDate() { return paymentDate; }
+    public LocalDateTime getPaymentDate() { return paymentDate; }
     public Money getExpectedAmount() { return expectedAmount; }
-    public Money getPaidAmount() { return paidAmount; }
+    public Money getAmountPaid() { return amountPaid; }
     public Money getLateFeeApplied() { return lateFeeApplied; }
     public PaymentStatus getStatus() { return status; }
     public String getTransactionReference() { return transactionReference; }
     public String getPaymentReceiptUrl() { return paymentReceiptUrl; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
-
 }
-
-/**
- * public void registerPayment(Money amountPaid,
- *                                 LocalDate actualPaymentDate,
- *                                 Money lateFee,
- *                                 String transactionRef,
- *                                 String receiptUrl) {...}
- *    LocalDate actualPaymentDate -> ES la fecha del pago real
- */

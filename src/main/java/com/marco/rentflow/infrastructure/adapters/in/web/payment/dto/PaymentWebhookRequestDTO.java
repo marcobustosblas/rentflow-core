@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public class PaymentWebhookRequestDTO {
 
@@ -22,7 +22,7 @@ public class PaymentWebhookRequestDTO {
     private String currency;
 
     @NotNull(message = "Payment date is required")
-    private LocalDate paymentDate;
+    private LocalDateTime paymentDate; // Actualizado a LocalDateTime
 
     @NotBlank(message = "Transaction reference is required")
     private String transactionRef;
@@ -30,61 +30,23 @@ public class PaymentWebhookRequestDTO {
     @NotBlank(message = "Receipt URL is required")
     private String receiptUrl;
 
-    public PaymentWebhookRequestDTO() {};
+    public PaymentWebhookRequestDTO() {}
 
-    public String getIdempotencyKey() {
-        return idempotencyKey;
-    }
+    public String getIdempotencyKey() { return idempotencyKey; }
+    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
 
-    public void setIdempotencyKey(String idempotencyKey) {
-        this.idempotencyKey = idempotencyKey;
-    }
+    public BigDecimal getAmountPaid() { return amountPaid; }
+    public void setAmountPaid(BigDecimal amountPaid) { this.amountPaid = amountPaid; }
 
-    public BigDecimal getAmountPaid() {
-        return amountPaid;
-    }
+    public String getCurrency() { return currency; }
+    public void setCurrency(String currency) { this.currency = currency; }
 
-    public void setAmountPaid(BigDecimal amountPaid) {
-        this.amountPaid = amountPaid;
-    }
+    public LocalDateTime getPaymentDate() { return paymentDate; }
+    public void setPaymentDate(LocalDateTime paymentDate) { this.paymentDate = paymentDate; }
 
-    public String getCurrency() {
-        return currency;
-    }
+    public String getTransactionRef() { return transactionRef; }
+    public void setTransactionRef(String transactionRef) { this.transactionRef = transactionRef; }
 
-    public void setCurrency(String currency) {
-        this.currency = currency;
-    }
-
-    public LocalDate getPaymentDate() {
-        return paymentDate;
-    }
-
-    public void setPaymentDate(LocalDate paymentDate) {
-        this.paymentDate = paymentDate;
-    }
-
-    public String getTransactionRef() {
-        return transactionRef;
-    }
-
-    public void setTransactionRef(String transactionRef) {
-        this.transactionRef = transactionRef;
-    }
-
-    public String getReceiptUrl() {
-        return receiptUrl;
-    }
-
-    public void setReceiptUrl(String receiptUrl) {
-        this.receiptUrl = receiptUrl;
-    }
+    public String getReceiptUrl() { return receiptUrl; }
+    public void setReceiptUrl(String receiptUrl) { this.receiptUrl = receiptUrl; }
 }
-
-
-/**
- * (Sun 30-8, 19:30 hr)
- * Este DTO envía los datos del pago
- * Este DTO está diseñado específicamente para atrapar el formato de datos que Webpay ENVÍA.
- * **/
-
