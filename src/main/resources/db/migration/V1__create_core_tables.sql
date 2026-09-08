@@ -22,10 +22,12 @@ CREATE TABLE subscriptions (
     plan_type VARCHAR(50) NOT NULL,
     billing_cycle VARCHAR(50) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
-    start_date DATE NOT NULL,
-    end_date DATE,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    max_properties INT NOT NULL,
+    max_storage_mb INT NOT NULL,
+    current_period_start TIMESTAMP NOT NULL, -- Agregado
+    current_period_end TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 3. BANK ACCOUNTS

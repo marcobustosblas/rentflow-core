@@ -3,8 +3,7 @@ package com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.su
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.user.UserJpaEntity;
 import jakarta.persistence.*;
 
-import java.time.LocalDate;
-import java.time.ZonedDateTime;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -27,39 +26,58 @@ public class SubscriptionJpaEntity {
     @Column(name = "status", nullable = false, length = 50)
     private String status;
 
-    @Column(name = "start_date", nullable = false)
-    private LocalDate startDate;
+    // Conexión exacta con: max_properties INT NOT NULL
+    @Column(name = "max_properties", nullable = false)
+    private int maxProperties;
 
-    @Column(name = "end_date")
-    private LocalDate endDate;
+    // Conexión exacta con: max_storage_mb INT NOT NULL
+    @Column(name = "max_storage_mb", nullable = false)
+    private int maxStorageMb;
 
+    // Conexión exacta con: current_period_start TIMESTAMP NOT NULL
+    @Column(name = "current_period_start", nullable = false)
+    private LocalDateTime currentPeriodStart;
+
+    // Conexión exacta con: current_period_end TIMESTAMP NOT NULL
+    @Column(name = "current_period_end", nullable = false)
+    private LocalDateTime currentPeriodEnd;
+
+    // Conexión exacta con: created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     @Column(name = "created_at", nullable = false, updatable = false)
-    private ZonedDateTime createdAt;
+    private LocalDateTime createdAt;
 
+    // Conexión exacta con: updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     @Column(name = "updated_at", nullable = false)
-    private ZonedDateTime updatedAt;
+    private LocalDateTime updatedAt;
 
     protected SubscriptionJpaEntity() {}
 
-    public SubscriptionJpaEntity(UUID id, UserJpaEntity landlord, String planType, String billingCycle, String status, LocalDate startDate, LocalDate endDate) {
+    public SubscriptionJpaEntity(UUID id, UserJpaEntity landlord, String planType, String billingCycle,
+                                 String status, int maxProperties, int maxStorageMb,
+                                 LocalDateTime currentPeriodStart, LocalDateTime currentPeriodEnd,
+                                 LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.landlord = landlord;
         this.planType = planType;
         this.billingCycle = billingCycle;
         this.status = status;
-        this.startDate = startDate;
-        this.endDate = endDate;
+        this.maxProperties = maxProperties;
+        this.maxStorageMb = maxStorageMb;
+        this.currentPeriodStart = currentPeriodStart;
+        this.currentPeriodEnd = currentPeriodEnd;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = ZonedDateTime.now();
-        this.updatedAt = ZonedDateTime.now();
+        if (this.createdAt == null) this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = ZonedDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     public UUID getId() {
@@ -102,35 +120,51 @@ public class SubscriptionJpaEntity {
         this.status = status;
     }
 
-    public LocalDate getStartDate() {
-        return startDate;
+    public int getMaxProperties() {
+        return maxProperties;
     }
 
-    public void setStartDate(LocalDate startDate) {
-        this.startDate = startDate;
+    public void setMaxProperties(int maxProperties) {
+        this.maxProperties = maxProperties;
     }
 
-    public LocalDate getEndDate() {
-        return endDate;
+    public int getMaxStorageMb() {
+        return maxStorageMb;
     }
 
-    public void setEndDate(LocalDate endDate) {
-        this.endDate = endDate;
+    public void setMaxStorageMb(int maxStorageMb) {
+        this.maxStorageMb = maxStorageMb;
     }
 
-    public ZonedDateTime getCreatedAt() {
+    public LocalDateTime getCurrentPeriodStart() {
+        return currentPeriodStart;
+    }
+
+    public void setCurrentPeriodStart(LocalDateTime currentPeriodStart) {
+        this.currentPeriodStart = currentPeriodStart;
+    }
+
+    public LocalDateTime getCurrentPeriodEnd() {
+        return currentPeriodEnd;
+    }
+
+    public void setCurrentPeriodEnd(LocalDateTime currentPeriodEnd) {
+        this.currentPeriodEnd = currentPeriodEnd;
+    }
+
+    public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(ZonedDateTime createdAt) {
+    public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
 
-    public ZonedDateTime getUpdatedAt() {
+    public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt(ZonedDateTime updatedAt) {
+    public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
 }

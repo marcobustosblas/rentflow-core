@@ -38,18 +38,23 @@ public class BankAccountJpaEntity {
 
     public BankAccountJpaEntity() {}
 
-    public BankAccountJpaEntity(UUID id, UserJpaEntity user, String accountType, String bankName, String accountNumber, String rut) {
+    public BankAccountJpaEntity(UUID id, UserJpaEntity user, String accountType, String bankName, String accountNumber, String rut, ZonedDateTime createdAt, ZonedDateTime updatedAt) {
         this.id = id;
         this.user = user;
         this.accountType = accountType;
         this.bankName = bankName;
         this.accountNumber = accountNumber;
         this.rut = rut;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = ZonedDateTime.now();
+        // Solo genera la fecha si el Dominio por alguna razón no la envió
+        if (this.createdAt == null) {
+            this.createdAt = ZonedDateTime.now();
+        }
         this.updatedAt = ZonedDateTime.now();
     }
 
