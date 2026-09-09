@@ -11,15 +11,15 @@ import java.util.UUID;
 @DisplayName("Subscription Aggregate Domain Tests")
 public class SubscriptionTest {
 
-    private final UUID userId = UUID.randomUUID();
+    private final UUID landlordId = UUID.randomUUID();
 
     @Test
     @DisplayName("Should create active subscription with default limits for STARTER plan")
     void shouldCreateNewSubscriptionSuccessfully() {
-        Subscription subscription = Subscription.create(userId, PlanType.STARTER, BillingCycle.MONTHLY);
+        Subscription subscription = Subscription.create(landlordId, PlanType.STARTER, BillingCycle.MONTHLY);
 
         assertNotNull(subscription.getId());
-        assertEquals(userId, subscription.getUserId());
+        assertEquals(landlordId, subscription.getLandlordId());
         assertEquals(PlanType.STARTER, subscription.getPlanType());
         assertEquals(BillingCycle.MONTHLY, subscription.getBillingCycle());
         assertEquals(SubscriptionStatus.ACTIVE, subscription.getStatus());
@@ -32,7 +32,7 @@ public class SubscriptionTest {
     @Test
     @DisplayName("Should allow adding property when current count is below max limit")
     void shouldAllowAddingPropertyWhenBelowLimit() {
-        Subscription subscription = Subscription.create(userId, PlanType.STARTER, BillingCycle.MONTHLY);
+        Subscription subscription = Subscription.create(landlordId, PlanType.STARTER, BillingCycle.MONTHLY);
 
         // STARTER permite 3. Si tiene 2, aún puede agregar.
         assertTrue(subscription.canAddProperty(2));
@@ -41,7 +41,7 @@ public class SubscriptionTest {
     @Test
     @DisplayName("Should deny adding property when current count exceeds limit")
     void shouldDenyAddingPropertyWhenLimitReached() {
-        Subscription subscription = Subscription.create(userId, PlanType.STARTER, BillingCycle.MONTHLY);
+        Subscription subscription = Subscription.create(landlordId, PlanType.STARTER, BillingCycle.MONTHLY);
 
         // STARTER permite 3. Si ya tiene 3, puede estar al límite (3<=3), pero con 4 no puede agregar más.
         assertTrue(subscription.canAddProperty(3));
@@ -51,7 +51,7 @@ public class SubscriptionTest {
     @Test
     @DisplayName("Should deny adding property when subscription is not active")
     void shouldDenyAddingPropertyWhenInactiveOrCancelled() {
-        Subscription subscription = Subscription.create(userId, PlanType.STARTER, BillingCycle.MONTHLY);
+        Subscription subscription = Subscription.create(landlordId, PlanType.STARTER, BillingCycle.MONTHLY);
         subscription.cancel();
 
         assertFalse(subscription.canAddProperty(1));
@@ -60,7 +60,7 @@ public class SubscriptionTest {
     @Test
     @DisplayName("Should update limits and period when changing plan (Upgrade)")
     void shouldUpdateLimitsOnPlanChange() {
-        Subscription subscription = Subscription.create(userId, PlanType.STARTER, BillingCycle.MONTHLY);
+        Subscription subscription = Subscription.create(landlordId, PlanType.STARTER, BillingCycle.MONTHLY);
 
         subscription.changePlan(PlanType.PRO, BillingCycle.YEARLY);
 
@@ -73,7 +73,7 @@ public class SubscriptionTest {
     @Test
     @DisplayName("Should transition states correctly: cancel, past due, and renew")
     void shouldHandleStateTransitions() {
-        Subscription subscription = Subscription.create(userId, PlanType.STARTER, BillingCycle.MONTHLY);
+        Subscription subscription = Subscription.create(landlordId, PlanType.STARTER, BillingCycle.MONTHLY);
 
         subscription.markAsPastDue();
         assertEquals(SubscriptionStatus.PAST_DUE, subscription.getStatus());
@@ -90,11 +90,14 @@ public class SubscriptionTest {
     @Test
     @DisplayName("Should identify expired subscription when currentPeriodEnd is in the past")
     void shouldIdentifyExpiredSubscription() {
-        LocalDateTime pastDate = LocalDateTime.now().minusDays(1);
+        LocalDateTime pastDate = LocalDateTime.now().minusDays(1); // Su fin de periodo fue AYER
+        LocalDateTime startDate = LocalDateTime.now().minusMonths(1).minusDays(1); // Inició hace 1 mes y 1 día
+
+        // CORREGIDO: Se añade explícitamente el currentPeriodStart (startDate) en el reconstitute
         Subscription expiredSubscription = Subscription.reconstitute(
-                UUID.randomUUID(), userId, PlanType.STARTER, BillingCycle.MONTHLY,
+                UUID.randomUUID(), landlordId, PlanType.STARTER, BillingCycle.MONTHLY,
                 SubscriptionStatus.ACTIVE, 3, 100,
-                pastDate, // su fin de periodo fue AYER (pastDate)
+                startDate, pastDate,
                 LocalDateTime.now().minusMonths(1), LocalDateTime.now()
         );
 
@@ -106,7 +109,7 @@ public class SubscriptionTest {
     @DisplayName("Should create Enterprise plan and execute all date getters (Coverage)")
     void shouldCreateEnterprisePlanAndTestRemainingGetters() {
         Subscription enterpriseSubscription = Subscription.create(
-                userId,
+                landlordId,
                 PlanType.ENTERPRISE,
                 BillingCycle.MONTHLY
         );
@@ -114,9 +117,10 @@ public class SubscriptionTest {
         assertEquals(13, enterpriseSubscription.getMaxProperties());
         assertEquals(10000, enterpriseSubscription.getMaxStorageMb());
 
+        // Verificación de cobertura de los getters de fechas
+        assertNotNull(enterpriseSubscription.getCurrentPeriodStart());
         assertNotNull(enterpriseSubscription.getCurrentPeriodEnd());
         assertNotNull(enterpriseSubscription.getCreatedAt());
         assertNotNull(enterpriseSubscription.getUpdatedAt());
     }
-
 }
