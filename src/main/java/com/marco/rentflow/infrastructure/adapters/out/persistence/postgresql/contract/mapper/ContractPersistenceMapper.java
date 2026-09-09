@@ -7,14 +7,16 @@ import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.contract.ContractJpaEntity;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.property.PropertyJpaEntity;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.user.UserJpaEntity;
+import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
+@Component
 public class ContractPersistenceMapper {
 
     private ContractPersistenceMapper() {}
 
-    public static ContractJpaEntity toJpaEntity(RentalContract domain) {
+    public ContractJpaEntity toJpaEntity(RentalContract domain) {
         if (domain == null) return null;
 
         PropertyJpaEntity propertyProxy = new PropertyJpaEntity();
@@ -39,7 +41,7 @@ public class ContractPersistenceMapper {
         );
     }
 
-    public static RentalContract toDomain(ContractJpaEntity entity) {
+    public RentalContract toDomain(ContractJpaEntity entity) {
         if (entity == null) return null;
 
         Currency currency = Currency.valueOf(entity.getCurrency());

@@ -1,6 +1,7 @@
 package com.marco.rentflow.core.domain.payment.ports.out;
 
 import com.marco.rentflow.core.domain.payment.PaymentRecord;
+import com.marco.rentflow.core.domain.payment.PaymentTarget;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -18,9 +19,11 @@ public interface PaymentRepository {
     // Busca un pago usando la clave de idempotencia (vital para evitar duplicados)
     Optional<PaymentRecord> findByIdempotencyKey(String idempotencyKey);
 
-    // Obtiene all el historial de pagos de un contrato específico
+    // Method de conveniencia para casos de uso de arriendos
     List<PaymentRecord> findByContractId(UUID contractId);
 
-    // Encuentra los cobros que están pendientes y cuya fecha límite ya pasó
-    List<PaymentRecord> findPendingByDueDateBefore(LocalDate date);
+    // Method agnóstico puro (El motor real)
+    List<PaymentRecord> findByReferenceIdAndTarget(UUID referenceId, PaymentTarget target);
+
+    List<PaymentRecord> findByStatusAndDueDateBefore(String status, LocalDate date);
 }
