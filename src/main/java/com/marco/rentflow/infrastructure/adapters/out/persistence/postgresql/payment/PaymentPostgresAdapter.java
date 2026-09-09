@@ -54,7 +54,8 @@ public class PaymentPostgresAdapter implements PaymentRepository {
 
     @Override
     public List<PaymentRecord> findByReferenceIdAndTarget(UUID referenceId, PaymentTarget target) {
-        return springDataRepository.findByReferenceIdAndPaymentTarget(referenceId, target.name()).stream()
+        return springDataRepository.findByReferenceIdAndPaymentTarget(referenceId, target.name())
+                .stream()
                 .map(PaymentPersistenceMapper::toDomain)
                 .toList();
     }

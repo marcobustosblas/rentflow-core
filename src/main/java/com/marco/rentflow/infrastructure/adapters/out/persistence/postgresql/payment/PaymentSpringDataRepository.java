@@ -12,8 +12,7 @@ public interface PaymentSpringDataRepository extends JpaRepository<PaymentJpaEnt
 
     Optional<PaymentJpaEntity> findByIdempotencyKey(String idempotencyKey);
 
-    List<PaymentJpaEntity> findByContractId(UUID contractId);
-
+    // Este es el único motor de búsqueda que necesito
     List<PaymentJpaEntity> findByReferenceIdAndPaymentTarget(UUID referenceId, String paymentTarget);
 
     List<PaymentJpaEntity> findByStatusAndDueDateBefore(String status, LocalDate date);
