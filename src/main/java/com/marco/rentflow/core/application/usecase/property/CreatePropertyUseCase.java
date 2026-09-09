@@ -32,7 +32,7 @@ public class CreatePropertyUseCase {
     public Property execute(String address, Money basePrice, UUID landlordId, UUID bankAccountId) {
 
         /* 2 - Validar límites de la suscripción (Regla de Negocio) */
-        Subscription subscription = subscriptionRepository.findByUserId(landlordId)
+        Subscription subscription = subscriptionRepository.findByLandlordId(landlordId)
                 .orElseThrow(() -> new IllegalArgumentException("Subscription not found"));
 
         int currentCountPropertiesByLandlord = propertyRepository.countByLandlordId(landlordId);

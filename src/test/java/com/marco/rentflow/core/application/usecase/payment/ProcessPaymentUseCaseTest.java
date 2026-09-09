@@ -5,6 +5,7 @@ import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.core.domain.common.Money;
 import com.marco.rentflow.core.domain.payment.PaymentRecord;
 import com.marco.rentflow.core.domain.payment.PaymentStatus;
+import com.marco.rentflow.core.domain.payment.PaymentTarget;
 import com.marco.rentflow.core.domain.payment.ports.out.PaymentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -39,17 +41,17 @@ public class ProcessPaymentUseCaseTest {
 
     private String idempotencyKey;
     private Money expectedAmount;
-    private LocalDate paymentDate;
+    private LocalDateTime paymentDate;
+    private LocalDate dueDate;
     private UUID contractId;
-    private UUID tenantId;
 
     @BeforeEach
     void setUp() {
         idempotencyKey = "PAY-CONTRACT-123-2026-03";
         expectedAmount = new Money(new BigDecimal("500000"), Currency.CLP);
-        paymentDate = LocalDate.now();
+        paymentDate = LocalDateTime.now();
+        dueDate = LocalDate.now(); // Fecha límite theoretic
         contractId = UUID.randomUUID();
-        tenantId = UUID.randomUUID();
     }
 
     @Nested
@@ -78,7 +80,7 @@ public class ProcessPaymentUseCaseTest {
         @DisplayName("Debe retornar el pago sin modificar ni re-notificar si ya estaba en estado PAID (Idempotencia pura)")
         void shouldReturnExistingPaymentWhenAlreadyPaid() {
             PaymentRecord paidRecord = PaymentRecord.createPending(
-                    contractId, tenantId, paymentDate, expectedAmount, idempotencyKey
+                    contractId, PaymentTarget.RENT, dueDate, expectedAmount, idempotencyKey
             );
             paidRecord.registerPayment(expectedAmount, paymentDate, new Money(BigDecimal.ZERO, Currency.CLP), "REF-123", "receipt_url");
 
@@ -102,7 +104,7 @@ public class ProcessPaymentUseCaseTest {
         void shouldThrowExceptionWhenPaymentIsInsufficient() {
             Money insufficientAmount = new Money(new BigDecimal("400000"), Currency.CLP); // 100 mil menos
             PaymentRecord pendingRecord = PaymentRecord.createPending(
-                    contractId, tenantId, paymentDate, expectedAmount, idempotencyKey
+                    contractId, PaymentTarget.RENT, dueDate, expectedAmount, idempotencyKey
             );
 
             when(paymentRepository.findByIdempotencyKey(idempotencyKey))
@@ -123,7 +125,7 @@ public class ProcessPaymentUseCaseTest {
         void shouldThrowExceptionWhenCurrencyMismatch() {
             Money usdAmount = new Money(new BigDecimal("500"), Currency.USD); // Moneda distinta (USD vs CLP)
             PaymentRecord pendingRecord = PaymentRecord.createPending(
-                    contractId, tenantId, paymentDate, expectedAmount, idempotencyKey
+                    contractId, PaymentTarget.RENT, dueDate, expectedAmount, idempotencyKey
             );
 
             when(paymentRepository.findByIdempotencyKey(idempotencyKey))
@@ -148,7 +150,7 @@ public class ProcessPaymentUseCaseTest {
         @DisplayName("Debe registrar el pago, persisitr con referencia de transacción y notificar al usuario")
         void shouldProcessPaymentSuccessfullyWithReference() {
             PaymentRecord pendingRecord = PaymentRecord.createPending(
-                    contractId, tenantId, paymentDate, expectedAmount, idempotencyKey
+                    contractId, PaymentTarget.RENT, dueDate, expectedAmount, idempotencyKey
             );
 
             when(paymentRepository.findByIdempotencyKey(idempotencyKey))
@@ -170,7 +172,7 @@ public class ProcessPaymentUseCaseTest {
         @DisplayName("Debe permitir ejecutar la sobrecarga básica de 3 parámetros usando idempotencyKey como referencia")
         void shouldProcessPaymentSuccessfullyWithBasicOverload() {
             PaymentRecord pendingRecord = PaymentRecord.createPending(
-                    contractId, tenantId, paymentDate, expectedAmount, idempotencyKey
+                    contractId, PaymentTarget.RENT, dueDate, expectedAmount, idempotencyKey
             );
 
             when(paymentRepository.findByIdempotencyKey(idempotencyKey))
