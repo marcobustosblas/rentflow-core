@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: rentflow-core
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/rentflow_core_db
+    username: rentflow_user
+    password: rentflow_password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      # ddl-auto=validate ensures Flyway takes charge, while Hibernate verifies entity mapping consistency
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    # If I ever need to clean up, I remember that Flyway will read my modified V1
+    baseline-on-migrate: true
+    # Initial version
+    baseline-version: 0
+    # Migrations location
+    locations: classpath:db/migration

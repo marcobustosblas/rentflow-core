@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: rentflow-core-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: rentflow_user
+      POSTGRES_PASSWORD: rentflow_password
+      POSTGRES_DB: rentflow_core_db
+    volumes:
+      - rentflow_core_data:/var/lib/postgresql/data
+    # Auto-restart
+    restart: unless-stopped
+volumes:
+  rentflow_core_data:
+    # Performance driver
+    driver: local
