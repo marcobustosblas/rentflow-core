@@ -28,6 +28,10 @@ public class PropertyPersistenceMapper {
             accountProxy.setId(domain.getBankAccountId());
         }
 
+        // se agrego esto para convertir las fechas LocalDateTime de dominio a ZonedDateTime de JPA y evitar nulos en la entidad persistida
+        java.time.ZonedDateTime createdAt = domain.getCreatedAt() != null ? domain.getCreatedAt().atZone(java.time.ZoneId.systemDefault()) : java.time.ZonedDateTime.now();
+        java.time.ZonedDateTime updatedAt = domain.getUpdatedAt() != null ? domain.getUpdatedAt().atZone(java.time.ZoneId.systemDefault()) : java.time.ZonedDateTime.now();
+
         return new PropertyJpaEntity(
                 domain.getId(),
                 landlordProxy,
@@ -35,7 +39,9 @@ public class PropertyPersistenceMapper {
                 domain.getAddress(),
                 domain.getStatus().name(),
                 domain.getBasePrice().getAmount(),
-                domain.getBasePrice().getCurrency().name()
+                domain.getBasePrice().getCurrency().name(),
+                createdAt,
+                updatedAt
         );
     }
 

@@ -44,6 +44,11 @@ public class PropertyJpaEntity {
     public PropertyJpaEntity() {}
 
     public PropertyJpaEntity(UUID id, UserJpaEntity landlord, BankAccountJpaEntity payoutAccount, String address, String status, BigDecimal basePrice, String currency) {
+        this(id, landlord, payoutAccount, address, status, basePrice, currency, null, null);
+    }
+
+    // se agrego esto para permitir inicializar createdAt y updatedAt desde el mapper al convertir de Dominio a JPA
+    public PropertyJpaEntity(UUID id, UserJpaEntity landlord, BankAccountJpaEntity payoutAccount, String address, String status, BigDecimal basePrice, String currency, ZonedDateTime createdAt, ZonedDateTime updatedAt) {
         this.id = id;
         this.landlord = landlord;
         this.payoutAccount = payoutAccount;
@@ -51,12 +56,19 @@ public class PropertyJpaEntity {
         this.status = status;
         this.basePrice = basePrice;
         this.currency = currency;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = ZonedDateTime.now();
-        this.updatedAt = ZonedDateTime.now();
+        // se agrego esto para evitar sobrescribir las fechas si ya fueron provistas desde el objeto de dominio
+        if (this.createdAt == null) {
+            this.createdAt = ZonedDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = ZonedDateTime.now();
+        }
     }
 
     @PreUpdate

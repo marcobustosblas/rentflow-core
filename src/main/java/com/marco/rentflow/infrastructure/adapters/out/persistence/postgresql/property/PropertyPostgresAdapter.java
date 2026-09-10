@@ -24,8 +24,9 @@ public class PropertyPostgresAdapter implements PropertyRepository {
     @Override
     public Property save(Property property) {
         PropertyJpaEntity entity = persistenceMapper.toJpaEntity(property);
-        springDataRepository.save(entity);
-        return persistenceMapper.toDomain(entity);
+        // se agrego esto para capturar el retorno de save() de Spring Data conteniendo la entidad persistida actualizada
+        PropertyJpaEntity savedEntity = springDataRepository.save(entity);
+        return persistenceMapper.toDomain(savedEntity);
     }
 
     @Override
