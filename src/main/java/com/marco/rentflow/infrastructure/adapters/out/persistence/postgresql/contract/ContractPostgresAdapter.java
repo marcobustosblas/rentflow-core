@@ -3,11 +3,13 @@ package com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.co
 import com.marco.rentflow.core.domain.contract.RentalContract;
 import com.marco.rentflow.core.domain.contract.ports.out.ContractRepository;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.contract.mapper.ContractPersistenceMapper;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Component
 public class ContractPostgresAdapter implements ContractRepository {
 
     private final ContractSpringDataRepository springDataRepository;

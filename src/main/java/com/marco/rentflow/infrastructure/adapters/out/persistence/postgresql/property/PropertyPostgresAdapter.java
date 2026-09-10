@@ -4,11 +4,13 @@ import com.marco.rentflow.core.domain.property.Property;
 import com.marco.rentflow.core.domain.property.PropertyStatus;
 import com.marco.rentflow.core.domain.property.ports.out.PropertyRepository;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.property.mapper.PropertyPersistenceMapper;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Component // el escudo de SPRING (como faltaba, spring es ciego a esta clase [9-9-26, 22:57 hr])
 public class PropertyPostgresAdapter implements PropertyRepository {
 
     public final PropertySpringDataRepository springDataRepository;
@@ -39,7 +41,7 @@ public class PropertyPostgresAdapter implements PropertyRepository {
     }
 
     @Override
-    public List<Property> findAllAvailable() {
+    public List<Property> findAllAvailable(String status) {
         return springDataRepository.findAllAvailable(PropertyStatus.AVAILABLE.toString())
                 .stream()
                 .map(persistenceMapper::toDomain)
