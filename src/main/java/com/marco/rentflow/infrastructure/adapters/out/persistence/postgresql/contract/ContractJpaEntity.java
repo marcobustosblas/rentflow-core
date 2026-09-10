@@ -59,6 +59,11 @@ public class ContractJpaEntity {
     protected ContractJpaEntity() {}
 
     public ContractJpaEntity(UUID id, PropertyJpaEntity property, UserJpaEntity tenant, String status, LocalDate startDate, LocalDate endDate, Integer dueDay, BigDecimal rentAmount, BigDecimal depositAmount, String currency, BigDecimal dailyPenalty, LocalDate lastReadjustmentDate) {
+        this(id, property, tenant, status, startDate, endDate, dueDay, rentAmount, depositAmount, currency, dailyPenalty, lastReadjustmentDate, null, null);
+    }
+
+    // se agrego esto para permitir inicializar createdAt y updatedAt desde el mapper al convertir de Dominio a JPA
+    public ContractJpaEntity(UUID id, PropertyJpaEntity property, UserJpaEntity tenant, String status, LocalDate startDate, LocalDate endDate, Integer dueDay, BigDecimal rentAmount, BigDecimal depositAmount, String currency, BigDecimal dailyPenalty, LocalDate lastReadjustmentDate, ZonedDateTime createdAt, ZonedDateTime updatedAt) {
         this.id = id;
         this.property = property;
         this.tenant = tenant;
@@ -71,12 +76,19 @@ public class ContractJpaEntity {
         this.currency = currency;
         this.dailyPenalty = dailyPenalty;
         this.lastReadjustmentDate = lastReadjustmentDate;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = ZonedDateTime.now();
-        this.updatedAt = ZonedDateTime.now();
+        // se agrego esto para evitar sobrescribir las fechas si ya fueron provistas desde el objeto de dominio
+        if (this.createdAt == null) {
+            this.createdAt = ZonedDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = ZonedDateTime.now();
+        }
     }
 
     @PreUpdate

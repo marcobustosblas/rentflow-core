@@ -19,11 +19,20 @@ public class ContractPersistenceMapper {
     public ContractJpaEntity toJpaEntity(RentalContract domain) {
         if (domain == null) return null;
 
+        UserJpaEntity landlordProxy = new UserJpaEntity();
+        landlordProxy.setId(domain.getLandlordId());
+
         PropertyJpaEntity propertyProxy = new PropertyJpaEntity();
         propertyProxy.setId(domain.getPropertyId());
+        // se agrego esto para asociar el proxy de landlord en propertyProxy y evitar NullPointerException al invocar property.getLandlord().getId() en toDomain
+        propertyProxy.setLandlord(landlordProxy);
 
         UserJpaEntity tenantProxy = new UserJpaEntity();
         tenantProxy.setId(domain.getTenantId());
+
+        // se agrego esto para convertir las fechas LocalDateTime de dominio a ZonedDateTime de JPA
+        java.time.ZonedDateTime createdAt = domain.getCreatedAt() != null ? domain.getCreatedAt().atZone(java.time.ZoneId.systemDefault()) : java.time.ZonedDateTime.now();
+        java.time.ZonedDateTime updatedAt = domain.getUpdatedAt() != null ? domain.getUpdatedAt().atZone(java.time.ZoneId.systemDefault()) : java.time.ZonedDateTime.now();
 
         return new ContractJpaEntity(
                 domain.getId(),
@@ -37,7 +46,9 @@ public class ContractPersistenceMapper {
                 domain.getDepositAmount().getAmount(),
                 domain.getMonthlyRent().getCurrency().name(),
                 domain.getDailyPenaltyRate(),
-                domain.getLastReadjustmentDate()
+                domain.getLastReadjustmentDate(),
+                createdAt,
+                updatedAt
         );
     }
 
