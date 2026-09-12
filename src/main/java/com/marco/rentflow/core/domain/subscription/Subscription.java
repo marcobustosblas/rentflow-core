@@ -6,56 +6,63 @@ import java.util.UUID;
 
 public class Subscription {
     private final UUID id;
-    private final UUID userId;
+    private final UUID landlordId;
     private PlanType planType;
     private BillingCycle billingCycle;
     private SubscriptionStatus status;
     private int maxProperties;
     private int maxStorageMb;
-    private LocalDateTime subscriptionPeriodEnd;
+
+    // Fechas explícitas del ciclo de facturación actual
+    private LocalDateTime currentPeriodStart;
+    private LocalDateTime currentPeriodEnd;
+
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    // 1. CONSTRUCTOR PRIVADO (El Guardián Absoluto)
-    private Subscription(UUID id, UUID userId, PlanType planType, BillingCycle billingCycle,
+    private Subscription(UUID id, UUID landlordId, PlanType planType, BillingCycle billingCycle,
                          SubscriptionStatus status, int maxProperties, int maxStorageMb,
-                         LocalDateTime currentPeriodEnd, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                         LocalDateTime currentPeriodStart, LocalDateTime currentPeriodEnd,
+                         LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = Objects.requireNonNull(id, "Subscription ID cannot be null");
-        this.userId = Objects.requireNonNull(userId, "User ID cannot be null");
+        this.landlordId = Objects.requireNonNull(landlordId, "User ID cannot be null");
         this.planType = Objects.requireNonNull(planType, "PlanType cannot be null");
         this.billingCycle = Objects.requireNonNull(billingCycle, "BillingCycle cannot be null");
         this.status = Objects.requireNonNull(status, "Status cannot be null");
         this.maxProperties = maxProperties;
         this.maxStorageMb = maxStorageMb;
-        this.subscriptionPeriodEnd = Objects.requireNonNull(currentPeriodEnd, "CurrentPeriodEnd cannot be null");
+        this.currentPeriodStart = Objects.requireNonNull(currentPeriodStart, "CurrentPeriodStart cannot be null");
+        this.currentPeriodEnd = Objects.requireNonNull(currentPeriodEnd, "CurrentPeriodEnd cannot be null");
         this.createdAt = Objects.requireNonNull(createdAt, "CreatedAt cannot be null");
         this.updatedAt = Objects.requireNonNull(updatedAt, "UpdatedAt cannot be null");
     }
 
-    // 2. FACTORY METHOD PARA NUEVOS (Capa de Aplicación)
-    public static Subscription create(UUID userId, PlanType planType, BillingCycle billingCycle) {
+    public static Subscription create(UUID landlordId, PlanType planType, BillingCycle billingCycle) {
+        LocalDateTime now = LocalDateTime.now();
         return new Subscription(
                 UUID.randomUUID(),
-                userId,
+                landlordId,
                 planType,
                 billingCycle,
                 SubscriptionStatus.ACTIVE,
                 planType.getPropertyLimit(),
                 calculateStorageMb(planType),
-                calculatePeriodEnd(billingCycle, LocalDateTime.now()),
-                LocalDateTime.now(),
-                LocalDateTime.now()
+                now, // Inicio del ciclo
+                calculatePeriodEnd(billingCycle, now), // Fin del ciclo
+                now,
+                now
         );
     }
 
-    // 3. FACTORY METHOD PARA MAPEO DE BD (Capa de Infraestructura)
-    public static Subscription reconstitute(UUID id, UUID userId, PlanType planType, BillingCycle billingCycle,
-                                        SubscriptionStatus status, int maxProperties, int maxStorageMb,
-                                        LocalDateTime currentPeriodEnd, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public static Subscription reconstitute(UUID id, UUID landlordId, PlanType planType, BillingCycle billingCycle,
+                                            SubscriptionStatus status, int maxProperties, int maxStorageMb,
+                                            LocalDateTime currentPeriodStart, LocalDateTime currentPeriodEnd,
+                                            LocalDateTime createdAt, LocalDateTime updatedAt) {
         return new Subscription(
-                id, userId, planType, billingCycle,
+                id, landlordId, planType, billingCycle,
                 status, maxProperties, maxStorageMb,
-                currentPeriodEnd, createdAt, updatedAt
+                currentPeriodStart, currentPeriodEnd,
+                createdAt, updatedAt
         );
     }
 
@@ -66,7 +73,10 @@ public class Subscription {
         this.billingCycle = Objects.requireNonNull(newCycle, "New billing cycle cannot be null");
         this.maxProperties = newPlan.getPropertyLimit();
         this.maxStorageMb = calculateStorageMb(newPlan);
-        this.subscriptionPeriodEnd = calculatePeriodEnd(newCycle, LocalDateTime.now());
+
+        // Al cambiar de plan, se reinicia el ciclo desde hoy
+        this.currentPeriodStart = LocalDateTime.now();
+        this.currentPeriodEnd = calculatePeriodEnd(newCycle, this.currentPeriodStart);
         touch();
     }
 
@@ -75,36 +85,24 @@ public class Subscription {
      */
     public boolean canAddProperty(int currentPropertyCount) {
         return isActive() && currentPropertyCount <= this.maxProperties;
-        // Permite que sean 5 exactos con <= (con 1 cambio me ahorre problemas con el cliente)
     }
 
-    /**
-     * Evalúa si la suscripción está activa y no vencida por fecha.
-     */
     public boolean isActive() {
         return this.status == SubscriptionStatus.ACTIVE && !isExpired();
     }
 
-    /**
-     * Evalúa si el periodo pagado ya venció respecto a la fecha actual.
-     */
     public boolean isExpired() {
-        // ¿El momento actual (AHORA) es DESPUÉS del fin del periodo contratado?
-        return LocalDateTime.now().isAfter(this.subscriptionPeriodEnd);
+        return LocalDateTime.now().isAfter(this.currentPeriodEnd);
     }
 
-    /**
-     * Renueva la suscripción por un nuevo periodo al recibir la confirmación de pago.
-     */
     public void renew() {
         this.status = SubscriptionStatus.ACTIVE;
-        this.subscriptionPeriodEnd = calculatePeriodEnd(this.billingCycle, LocalDateTime.now());
+        // El nuevo inicio es hoy (o podría ser el currentPeriodEnd anterior si permites renovación adelantada)
+        this.currentPeriodStart = LocalDateTime.now();
+        this.currentPeriodEnd = calculatePeriodEnd(this.billingCycle, this.currentPeriodStart);
         touch();
     }
 
-    /**
-     * Cancela la suscripción.
-     */
     public void cancel() {
         this.status = SubscriptionStatus.CANCELLED;
         touch();
@@ -118,7 +116,10 @@ public class Subscription {
         touch();
     }
 
-    // Métodos auxiliares privados
+    /**
+     * PRIVATE HELPER METHODS
+     */
+
     private static int calculateStorageMb(PlanType plan) {
         return switch (plan) {
             case STARTER -> 100;
@@ -135,15 +136,20 @@ public class Subscription {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // GETTERS
     public UUID getId() { return id; }
-    public UUID getUserId() { return userId; }
+    public UUID getLandlordId() { return landlordId; }
     public PlanType getPlanType() { return planType; }
     public BillingCycle getBillingCycle() { return billingCycle; }
     public SubscriptionStatus getStatus() { return status; }
     public int getMaxProperties() { return maxProperties; }
     public int getMaxStorageMb() { return maxStorageMb; }
-    public LocalDateTime getCurrentPeriodEnd() { return subscriptionPeriodEnd; }
+    public LocalDateTime getCurrentPeriodStart() { return currentPeriodStart; }
+    public LocalDateTime getCurrentPeriodEnd() { return currentPeriodEnd; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }
+
+/**
+ * Nota importante:
+ * VERIFICAR EN UN FUTURO LOS CONDICIONALES para los métodos de cambios de estado
+ */

@@ -11,6 +11,7 @@ import com.marco.rentflow.core.domain.user.UserRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,11 +27,12 @@ public class ProcessPaymentUseCase {
     }
 
     /* 1 - Webhook recibe: Token de la transacción, Cuánto se pagó realmente, Cuándo se pagó */
-    public PaymentRecord execute(String idempotencyKey, Money amountPaid, LocalDate actualPaymentDate) {
+    // Ajustes precisos: cambiar LocalDate por LocalDateTime en las firmas de los métodos execute
+    public PaymentRecord execute(String idempotencyKey, Money amountPaid, LocalDateTime actualPaymentDate) {
         return execute(idempotencyKey, amountPaid, actualPaymentDate, idempotencyKey, null);
     }
 
-    public PaymentRecord execute(String idempotencyKey, Money amountPaid, LocalDate actualPaymentDate, String transactionRef, String receiptUrl) {
+    public PaymentRecord execute(String idempotencyKey, Money amountPaid, LocalDateTime actualPaymentDate, String transactionRef, String receiptUrl) {
 
         // 2. Buscar la intención de pago previa por la Clave de Idempotencia
         PaymentRecord payment = paymentRepository.findByIdempotencyKey(idempotencyKey)

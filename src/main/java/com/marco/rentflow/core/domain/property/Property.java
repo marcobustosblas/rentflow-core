@@ -96,13 +96,57 @@ public class Property {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // === GETTERS ===
-    public UUID getId() { return id; }
-    public UUID getLandlordId() { return landlordId; }
-    public UUID getBankAccountId() { return bankAccountId; }
-    public String getAddress() { return address; }
-    public Money getBasePrice() { return basePrice; }
-    public PropertyStatus getStatus() { return status; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    // GETTERS & SETTERS
+
+    public UUID getId() {
+        return id;
+    }
+
+    public UUID getLandlordId() {
+        return landlordId;
+    }
+
+    public UUID getBankAccountId() {
+        return bankAccountId;
+    }
+
+    public void setBankAccountId(UUID bankAccountId) {
+        this.bankAccountId = bankAccountId;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public Money getBasePrice() {
+        return basePrice;
+    }
+
+    public void setBasePrice(Money basePrice) {
+        this.basePrice = basePrice;
+    }
+
+    public PropertyStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(PropertyStatus status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }

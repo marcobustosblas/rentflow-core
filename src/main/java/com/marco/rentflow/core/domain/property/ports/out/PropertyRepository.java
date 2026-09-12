@@ -11,7 +11,7 @@ public interface PropertyRepository {
     Property save(Property property);
     Optional<Property> findById(UUID id);
     List<Property> findByLandlordId(UUID landlordId);
-    List<Property> findAllAvailable();
+    List<Property> findAllAvailable(String status);
     int countByLandlordId(UUID landlordId);
 
 }

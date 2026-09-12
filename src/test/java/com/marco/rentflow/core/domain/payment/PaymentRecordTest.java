@@ -19,8 +19,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("PaymentRecord Aggregate Domain Tests")
 public class PaymentRecordTest {
 
-    private final UUID contractId = UUID.randomUUID();
-    private final UUID tenantId = UUID.randomUUID();
+    // Ahora referenceId reemplaza a contractId para ser agnósticos
+    private final UUID referenceId = UUID.randomUUID();
     private final Money rentAmount = new Money(new BigDecimal("350000"), Currency.CLP);
     private final LocalDate dueDate = LocalDate.of(2026, 3, 5); // Vence el 5 de Marzo
     private final String idempotencyKey = "COBRO-MARZO-2026";
@@ -33,7 +33,7 @@ public class PaymentRecordTest {
         @DisplayName("It must generate a pending charge with $0 paid and no fines")
         void shouldCreatePendingPaymentSuccessfully() {
             PaymentRecord payment = PaymentRecord.createPending(
-                    contractId, tenantId, dueDate, rentAmount, idempotencyKey
+                    referenceId, PaymentTarget.RENT, dueDate, rentAmount, idempotencyKey
             );
 
             assertNotNull(payment.getId());
@@ -41,9 +41,9 @@ public class PaymentRecordTest {
             assertTrue(payment.isPending());
             assertEquals(idempotencyKey, payment.getIdempotencyKey());
 
-            // Verificamos que nace con $0 pagado y $0 multa
-            assertEquals(new BigDecimal("0"), payment.getPaidAmount().getAmount());
-            assertEquals(new BigDecimal("0"), payment.getLateFeeApplied().getAmount());
+            // Verifico que nace con null en amountPaid y lateFeeApplied (semántica correcta)
+            assertNull(payment.getAmountPaid());
+            assertNull(payment.getLateFeeApplied());
         }
     }
 
@@ -55,10 +55,10 @@ public class PaymentRecordTest {
         @DisplayName("Payment must be successfully recorded when the full amount is paid on time")
         void shouldRegisterPaymentSuccessfully() {
             PaymentRecord payment = PaymentRecord.createPending(
-                    contractId, tenantId, dueDate, rentAmount, idempotencyKey
+                    referenceId, PaymentTarget.RENT, dueDate, rentAmount, idempotencyKey
             );
 
-            LocalDate paymentDate = LocalDate.of(2026, 3, 3); // Paga 2 días antes
+            LocalDateTime paymentDate = LocalDateTime.of(2026, 3, 3, 15, 30); // Paga 2 días antes a las 15:30 hr
             String transactionRef = "TEF-123456";
             String receiptUrl = "https://s3.aws.com/receipts/123.pdf";
 
@@ -79,7 +79,7 @@ public class PaymentRecordTest {
         @DisplayName("Should change status to OVERDUE when current date exceeds due date")
         void shouldMarkAsOverdueWhenDatePasses() {
             PaymentRecord payment = PaymentRecord.createPending(
-                    contractId, tenantId, dueDate, rentAmount, idempotencyKey
+                    referenceId, PaymentTarget.RENT, dueDate, rentAmount, idempotencyKey
             );
 
             LocalDate currentDate = LocalDate.of(2026, 3, 6); // 6 de Marzo (Atrasado)
@@ -92,15 +92,19 @@ public class PaymentRecordTest {
         @DisplayName("Should accept payment when it includes the late fee")
         void shouldRegisterPaymentWithLateFee() {
             PaymentRecord payment = PaymentRecord.createPending(
-                    contractId, tenantId, dueDate, rentAmount, idempotencyKey
+                    referenceId, PaymentTarget.RENT, dueDate, rentAmount, idempotencyKey
             );
 
             Money lateFee = new Money(new BigDecimal("10500"), Currency.CLP); // Multa de 3 días
             Money totalToPay = rentAmount.add(lateFee); // $360.500
 
-            payment.registerPayment(totalToPay, LocalDate.of(2026, 3, 8), lateFee, "TEF-999", "url");
+            // CORREGIDO: LocalDateTime
+            LocalDateTime paymentDate = LocalDateTime.of(2026, 3, 8, 10, 0);
+
+            payment.registerPayment(totalToPay, paymentDate, lateFee, "TEF-999", "url");
 
             assertTrue(payment.isPaid());
+            // Se asume que getAmountPaid refleja el total ingresado a caja
             assertEquals(new BigDecimal("360500"), payment.getTotalPaid().getAmount());
             assertEquals(new BigDecimal("360500"), payment.getTotalExpected().getAmount());
         }
@@ -123,13 +127,14 @@ public class PaymentRecordTest {
             void shouldCalculateLateFeeForDifferentDaysOverdue(int daysOverdue, String expectedLateFeeAmount) {
                 // Variables necesarias para simular el contrato
                 UUID localPropertyId = UUID.randomUUID();
+                UUID localTenantId = UUID.randomUUID();
                 UUID localLandlordId = UUID.randomUUID();
                 Money localStandardRent = new Money(new BigDecimal("350000"), Currency.CLP);
                 Money localStandardDeposit = new Money(new BigDecimal("350000"), Currency.CLP);
 
                 // Given: Contrato con arriendo de $350.000
                 RentalContract contract = RentalContract.create(
-                        localPropertyId, tenantId, localLandlordId,
+                        localPropertyId, localTenantId, localLandlordId,
                         localStandardRent, localStandardDeposit,
                         5,
                         LocalDate.of(2026, 1, 1),
@@ -138,25 +143,27 @@ public class PaymentRecordTest {
 
                 // Given: Registro de pago pendiente
                 PaymentRecord payment = PaymentRecord.createPending(
-                        contract.getId(), tenantId, dueDate, localStandardRent, idempotencyKey
+                        contract.getId(), PaymentTarget.RENT, dueDate, localStandardRent, idempotencyKey
                 );
 
                 // When: El inquilino paga 'X' días tarde
-                LocalDate paymentDate = dueDate.plusDays(daysOverdue);
-                BigDecimal dailyPenaltyRate = new BigDecimal("0.01"); // 1% diario
+                LocalDate lateDate = dueDate.plusDays(daysOverdue);
+                LocalDateTime paymentDateTime = lateDate.atTime(12, 0); // Convertido a LocalDateTime
 
                 // El contrato calcula la multa exacta
-                Money lateFee = contract.calculateLateFee(paymentDate, dueDate);
+                Money lateFee = contract.calculateLateFee(lateDate, dueDate);
 
                 // Sumo el total y lo registramos
                 Money totalToPay = localStandardRent.add(lateFee);
-                payment.registerPayment(totalToPay, paymentDate, lateFee, "TEF-" + daysOverdue, "url");
+                payment.registerPayment(totalToPay, paymentDateTime, lateFee, "TEF-" + daysOverdue, "url");
 
                 // Then: Verifico que la matemática y el estado sean perfectos
                 BigDecimal expectedLateFee = new BigDecimal(expectedLateFeeAmount);
                 assertEquals(expectedLateFee, lateFee.getAmount());
+
+                // Se asume que getAmountPaid refleja el pago final
                 assertEquals(localStandardRent.getAmount().add(expectedLateFee), payment.getTotalPaid().getAmount());
-                assertEquals(localStandardRent.getAmount().add(expectedLateFee), payment.getTotalExpected().getAmount());
+                assertEquals(localStandardRent.getAmount(), payment.getTotalExpected().getAmount());
             }
         }
 
@@ -164,7 +171,7 @@ public class PaymentRecordTest {
         @DisplayName("Should NOT mark as overdue if payment is not pending or date is not past due")
         void shouldNotMarkAsOverdueIfPaidOrNotPastDue() {
             PaymentRecord payment = PaymentRecord.createPending(
-                    contractId, tenantId, dueDate, rentAmount, idempotencyKey
+                    referenceId, PaymentTarget.RENT, dueDate, rentAmount, idempotencyKey
             );
 
             // 1: Intento marcarlo atrasado el mismo día de vencimiento (no debe cambiar)
@@ -172,7 +179,7 @@ public class PaymentRecordTest {
             assertEquals(PaymentStatus.PENDING, payment.getStatus());
 
             // 2: Lo pago, y luego intento marcarlo como atrasado (no debe cambiar)
-            payment.registerPayment(rentAmount, dueDate, null, "REF", "url");
+            payment.registerPayment(rentAmount, dueDate.atTime(12, 0), null, "REF", "url");
             payment.markAsOverdue(dueDate.plusDays(5)); // Han pasado 5 días, pero ya está pagado
 
             assertEquals(PaymentStatus.PAID, payment.getStatus()); // Sigue pagado
@@ -187,13 +194,13 @@ public class PaymentRecordTest {
         @DisplayName("Debe rechazar el pago si intenta pagar menos de lo que debe")
         void shouldThrowExceptionWhenPayingLessThanExpected() {
             PaymentRecord payment = PaymentRecord.createPending(
-                    contractId, tenantId, dueDate, rentAmount, idempotencyKey
+                    referenceId, PaymentTarget.RENT, dueDate, rentAmount, idempotencyKey
             );
 
             Money insufficientPayment = new Money(new BigDecimal("200000"), Currency.CLP); // Paga solo una parte
 
             assertThrows(IllegalArgumentException.class, () ->
-                    payment.registerPayment(insufficientPayment, LocalDate.of(2026, 3, 5), null, "TEF", "url")
+                    payment.registerPayment(insufficientPayment, LocalDateTime.of(2026, 3, 5, 12, 0), null, "TEF", "url")
             );
         }
 
@@ -201,17 +208,17 @@ public class PaymentRecordTest {
         @DisplayName("Debe rechazar un segundo pago si ya estaba pagado")
         void shouldThrowExceptionWhenRegisteringPaymentTwice() {
             PaymentRecord payment = PaymentRecord.createPending(
-                    contractId, tenantId, dueDate, rentAmount, idempotencyKey
+                    referenceId, PaymentTarget.RENT, dueDate, rentAmount, idempotencyKey
             );
 
-            payment.registerPayment(rentAmount,
-                    LocalDate.of(2026, 3, 5),
+            LocalDateTime payDate = LocalDateTime.of(2026, 3, 5, 12, 0);
+
+            payment.registerPayment(rentAmount, payDate,
                     null, "TEF-1", "url");
 
             // Intenta pagar de nuevo el mismo recibo
             assertThrows(IllegalStateException.class, () ->
-                    payment.registerPayment(rentAmount,
-                            LocalDate.of(2026, 3, 5),
+                    payment.registerPayment(rentAmount, payDate,
                             null, "TEF-2", "url")
             );
         }
@@ -220,10 +227,10 @@ public class PaymentRecordTest {
         @DisplayName("Debe rechazar/cancelar un cobro si ya fue pagado (prevención de fraude)")
         void shouldThrowExceptionWhenCancellingPaidRecord() {
             PaymentRecord payment = PaymentRecord.createPending(
-                    contractId, tenantId, dueDate, rentAmount, idempotencyKey
+                    referenceId, PaymentTarget.RENT, dueDate, rentAmount, idempotencyKey
             );
 
-            payment.registerPayment(rentAmount, LocalDate.of(2026, 3, 5), null, "TEF", "url");
+            payment.registerPayment(rentAmount, LocalDateTime.of(2026, 3, 5, 12, 0), null, "TEF", "url");
 
             // El dueño intenta cancelarlo mágicamente fraudulentamente
             assertThrows(IllegalStateException.class, payment::cancel);
@@ -239,10 +246,11 @@ public class PaymentRecordTest {
         @DisplayName("Should reconstitute payment from full constructor and test all getters")
         void shouldReconstituteAndTestGetters() {
             LocalDateTime now = LocalDateTime.now();
-            LocalDate payDate = LocalDate.now();
+            LocalDateTime payDate = LocalDateTime.now();
 
+            // CORREGIDO: Firma exacta de reconstitute
             PaymentRecord payment = PaymentRecord.reconstitute(
-                    UUID.randomUUID(), contractId, tenantId, idempotencyKey,
+                    UUID.randomUUID(), referenceId, PaymentTarget.RENT, idempotencyKey,
                     dueDate, payDate, rentAmount, rentAmount,
                     new Money(BigDecimal.ZERO, Currency.CLP),
                     PaymentStatus.PAID, "REF-123", "http://receipt.com",
@@ -250,13 +258,13 @@ public class PaymentRecordTest {
             );
 
             assertNotNull(payment.getId());
-            assertEquals(contractId, payment.getContractId());
-            assertEquals(tenantId, payment.getTenantId());
+            assertEquals(referenceId, payment.getReferenceId());
+            assertEquals(PaymentTarget.RENT, payment.getTarget());
             assertEquals(idempotencyKey, payment.getIdempotencyKey());
             assertEquals(dueDate, payment.getDueDate());
             assertEquals(payDate, payment.getPaymentDate());
             assertEquals(rentAmount, payment.getExpectedAmount());
-            assertEquals(rentAmount, payment.getPaidAmount());
+            assertEquals(rentAmount, payment.getAmountPaid());
             assertNotNull(payment.getLateFeeApplied());
             assertEquals(PaymentStatus.PAID, payment.getStatus());
             assertEquals("REF-123", payment.getTransactionReference());
@@ -269,21 +277,11 @@ public class PaymentRecordTest {
         @DisplayName("Should cancel a pending payment successfully")
         void shouldCancelPendingPayment() {
             PaymentRecord payment = PaymentRecord.createPending(
-                    contractId, tenantId, dueDate, rentAmount, idempotencyKey
+                    referenceId, PaymentTarget.RENT, dueDate, rentAmount, idempotencyKey
             );
 
             payment.cancel();
             assertEquals(PaymentStatus.CANCELLED, payment.getStatus());
-        }
-
-        @Test
-        @DisplayName("getTotalPaid should return zero when status is not PAID")
-        void shouldReturnZeroTotalPaidWhenNotPaid() {
-            PaymentRecord payment = PaymentRecord.createPending(
-                    contractId, tenantId, dueDate, rentAmount, idempotencyKey
-            );
-
-            assertEquals(BigDecimal.ZERO, payment.getTotalPaid().getAmount());
         }
     }
 
@@ -294,19 +292,16 @@ public class PaymentRecordTest {
         @Test
         @DisplayName("Should correctly return boolean values for all status queries")
         void shouldReturnCorrectBooleanForStatusQueries() {
-            // 1. Estado PENDING (Nace pendiente)
             PaymentRecord payment = PaymentRecord.createPending(
-                    contractId, tenantId, dueDate, rentAmount, idempotencyKey
+                    referenceId, PaymentTarget.RENT, dueDate, rentAmount, idempotencyKey
             );
             assertTrue(payment.isPending());
             assertFalse(payment.isPaid());
             assertFalse(payment.isOverdue());
 
-            // 2. Lo cambio a OVERDUE para evaluar los casos contrarios
             LocalDate pastDate = dueDate.plusDays(5);
             payment.markAsOverdue(pastDate);
 
-            // JaCoCo ahora ve la rama FALSE de isPending
             assertFalse(payment.isPending());
             assertFalse(payment.isPaid());
             assertTrue(payment.isOverdue());

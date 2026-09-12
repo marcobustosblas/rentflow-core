@@ -11,6 +11,6 @@ public interface ContractRepository {
     RentalContract save(RentalContract contract);
     Optional<RentalContract> findById(UUID id);
     List<RentalContract> findByTenantId(UUID tenantId);
-    List<RentalContract> findByLandlordId(UUID landlordId);
+    List<RentalContract> findByPropertyLandlordId(UUID landlordId);
 
 }

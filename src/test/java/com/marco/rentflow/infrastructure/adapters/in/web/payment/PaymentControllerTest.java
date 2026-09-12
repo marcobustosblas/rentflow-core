@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -67,8 +68,9 @@ class PaymentControllerTest {
         requestDTO.setIdempotencyKey("PAY-RENT-123-2026-03");
         requestDTO.setAmountPaid(new BigDecimal("500000"));
         requestDTO.setCurrency("CLP");
-        requestDTO.setPaymentDate(LocalDate.now());
+        requestDTO.setPaymentDate(LocalDateTime.now());
         requestDTO.setTransactionRef("TX-999");
+        requestDTO.setReceiptUrl("https://receipts.org/rx-999");
 
         // processPaymentUseCase retorna void en el controller (lo ignoro), pero simulo éxito devolviendo un objeto dummy o nada.
         // Como no asigno el retorno en el Controller, Mockito devuelve null por defecto, lo cual es perfecto.

@@ -7,6 +7,7 @@ import com.marco.rentflow.core.domain.contract.RentalContract;
 import com.marco.rentflow.core.domain.contract.ports.out.ContractRepository;
 import com.marco.rentflow.core.domain.payment.PaymentRecord;
 import com.marco.rentflow.core.domain.payment.PaymentStatus;
+import com.marco.rentflow.core.domain.payment.PaymentTarget;
 import com.marco.rentflow.core.domain.payment.ports.out.PaymentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -117,7 +118,7 @@ public class InitiatePaymentCheckoutUseCaseTest {
 
             // Simular un pago PENDING existente para el mismo vencimiento
             PaymentRecord existingPending = PaymentRecord.createPending(
-                    contractId, tenantId, dueDate, expectedTotal, expectedIdempotencyKey
+                    contractId, PaymentTarget.RENT, dueDate, expectedTotal, expectedIdempotencyKey
             );
 
             when(contractRepository.findById(contractId)).thenReturn(Optional.of(contract));

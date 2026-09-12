@@ -5,6 +5,7 @@ import com.marco.rentflow.core.domain.common.Money;
 import com.marco.rentflow.core.domain.contract.RentalContract;
 import com.marco.rentflow.core.domain.contract.ports.out.ContractRepository;
 import com.marco.rentflow.core.domain.payment.PaymentRecord;
+import com.marco.rentflow.core.domain.payment.PaymentTarget;
 import com.marco.rentflow.core.domain.payment.ports.out.PaymentRepository;
 
 import java.time.LocalDate;
@@ -24,19 +25,19 @@ public class InitiatePaymentCheckoutUseCase {
         this.paymentGatewayPort = gatewayPort;
     }
 
-    /* 1 */
+    /* 1. Recibe los IDs reales desde el Controller */
     public String execute(UUID tenantId, UUID contractId, LocalDate paymentDate) {
 
-        /* 2 */
+        /* 2. Buscar el contrato */
         RentalContract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new IllegalArgumentException("Contract not found"));
 
-        /* 3 */
+        /* 3. Validar autorización */
         if (!contract.getTenantId().equals(tenantId)) {
             throw new IllegalStateException("Unauthorized tenant");
         }
 
-        /* 4 calculo de due date */
+        /* 4 calculo de fecha límite y total */
         LocalDate dueDate = contract.calculatePaymentDueDate(paymentDate.getYear(), paymentDate.getMonthValue());
         Money calculateTotal = contract.calculateTotalWithPenalty(paymentDate, dueDate);
 
@@ -50,8 +51,14 @@ public class InitiatePaymentCheckoutUseCase {
             pendingPayment = existingPending.get();
         } else {
             String idempotencyKey = "PAY-" + contractId + "-" + dueDate.getYear() + "-" + String.format("%02d", dueDate.getMonthValue());
+            // AQUí SE APLICA EL BOUNDED CONTEXT AGNÓSTICO
             pendingPayment = PaymentRecord.createPending(
-                    contractId, tenantId, dueDate, calculateTotal, idempotencyKey);
+                    contractId, // referenceId (El ID de la entidad que origina el cobro)
+                    PaymentTarget.RENT, // target (El Enum exacto)
+                    dueDate,
+                    calculateTotal,
+                    idempotencyKey
+            );
             paymentRepository.save(pendingPayment);
         }
 

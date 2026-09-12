@@ -43,6 +43,7 @@ public class PaymentController {
         Currency currency = Currency.valueOf(request.getCurrency());
         Money amountPaid = new Money(request.getAmountPaid(), currency);
 
+        // Ahora request.getPaymentDate() devuelve un LocalDateTime, encajando perfecto con el caso de uso
         processPaymentUseCase.execute(
                 request.getIdempotencyKey(),
                 amountPaid,
