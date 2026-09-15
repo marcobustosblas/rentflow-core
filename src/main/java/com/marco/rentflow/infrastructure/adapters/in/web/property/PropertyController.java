@@ -26,27 +26,29 @@ import java.util.UUID;
 public class PropertyController {
 
     private final CreatePropertyUseCase createPropertyUseCase;
+    private final PropertyRestMapper propertyRestMapper;
 
-    public PropertyController(CreatePropertyUseCase useCase) {
+    public PropertyController(CreatePropertyUseCase useCase, PropertyRestMapper mapper) {
         this.createPropertyUseCase = useCase;
+        this.propertyRestMapper = mapper;
     }
 
     @PostMapping
     public ResponseEntity<PropertyResponseDTO> create(@Valid @RequestBody PropertyRequestDTO requestDTO) {
         // a- Transformar datos del front al value object del dominio
         Money basePrice = new Money(
-                requestDTO.getMonthlyRentAmount(),
-                Currency.valueOf(requestDTO.getCurrency())
+                requestDTO.monthlyRentAmount(),
+                Currency.valueOf(requestDTO.currency())
         );
         // b- Delego el trabajo duro al Caso de Uso (El Orquestador)
         Property createdProperty = createPropertyUseCase.execute(
-                requestDTO.getAddress(),
+                requestDTO.address(),
                 basePrice,
-                requestDTO.getLandlordId(),
-                requestDTO.getBankAccountId()
+                requestDTO.landlordId(),
+                requestDTO.bankAccountId()
         );
         // c- Traducir la Entidad de vuelta a un DTO seguro para la web
-        PropertyResponseDTO responseDTO = PropertyRestMapper.toResponseDTO(createdProperty);
+        PropertyResponseDTO responseDTO = propertyRestMapper.toDto(createdProperty);
         // d- Devolver HTTP 201 (Created) con el JSON mapeado
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
     }

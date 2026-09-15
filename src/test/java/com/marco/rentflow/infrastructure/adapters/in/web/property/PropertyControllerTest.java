@@ -36,12 +36,12 @@ public class PropertyControllerTest {
     @Test
     void createProperty_ShouldReturn201Created() throws Exception {
         // 1. Preparar el JSON de entrada (El Request)
-        PropertyRequestDTO requestDTO = new PropertyRequestDTO();
-        requestDTO.setAddress("Av. Siempre Viva 123");
-        requestDTO.setMonthlyRentAmount(new BigDecimal("500000"));
-        requestDTO.setCurrency("CLP");
-        requestDTO.setLandlordId(UUID.randomUUID());
-        requestDTO.setBankAccountId(UUID.randomUUID());
+        PropertyRequestDTO requestDTO = new PropertyRequestDTO(
+        requestDTO.address("Av. Siempre Viva 123"),
+        requestDTO.setMonthlyRentAmount(new BigDecimal("500000")),
+        requestDTO.setCurrency("CLP"),
+        requestDTO.setLandlordId(UUID.randomUUID()),
+        requestDTO.setBankAccountId(UUID.randomUUID()));
 
         // 2. Simular el comportamiento del Caso de Uso (El Mock)
         Property mockProperty = createPropertyUseCase.execute(
