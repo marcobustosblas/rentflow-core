@@ -19,32 +19,34 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/contracts")
 public class ContractController {
 
-    private final CreateContractUseCase contractUseCase;
+    private final CreateContractUseCase createContractUseCase;
+    private final ContractRestMapper contractRestMapper; // Inyección de MapStruct
 
-    public ContractController(CreateContractUseCase useCase) {
-        this.contractUseCase = useCase;
+    public ContractController(CreateContractUseCase createContractUseCase, ContractRestMapper contractRestMapper) {
+        this.createContractUseCase = createContractUseCase;
+        this.contractRestMapper = contractRestMapper;
     }
 
     @PostMapping
     public ResponseEntity<ContractResponseDTO> create(@Valid @RequestBody ContractRequestDTO requestDTO) {
 
-        Currency currency = Currency.valueOf(requestDTO.getCurrency());
-        Money monthlyRent = new Money(requestDTO.getMonthlyRentAmount(), currency);
-        Money depositAmount = new Money(requestDTO.getDepositAmount(), currency);
+        Currency currency = Currency.valueOf(requestDTO.currency());
+        Money monthlyRent = new Money(requestDTO.monthlyRentAmount(), currency);
+        Money depositAmount = new Money(requestDTO.depositAmount(), currency);
 
-        RentalContract contract = contractUseCase.execute(
-                requestDTO.getPropertyId(),
-                requestDTO.getTenantId(),
-                requestDTO.getLandlordId(),
+        RentalContract contract = createContractUseCase.execute(
+                requestDTO.propertyId(),
+                requestDTO.tenantId(),
+                requestDTO.landlordId(),
                 monthlyRent,
                 depositAmount,
-                requestDTO.getPaymentDueDay(),
-                requestDTO.getDailyPenaltyRate(),
-                requestDTO.getStartDate(),
-                requestDTO.getEndDate()
+                requestDTO.paymentDueDay(),
+                requestDTO.dailyPenaltyRate(),
+                requestDTO.startDate(),
+                requestDTO.endDate()
         );
 
-        ContractResponseDTO responseDTO = ContractRestMapper.toResponseDTO(contract);
+        ContractResponseDTO responseDTO = contractRestMapper.toDto(contract);
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
     }
 

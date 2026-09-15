@@ -2,28 +2,18 @@ package com.marco.rentflow.infrastructure.adapters.in.web.contract.mapper;
 
 import com.marco.rentflow.core.domain.contract.RentalContract;
 import com.marco.rentflow.infrastructure.adapters.in.web.contract.dto.ContractResponseDTO;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingConstants;
 
-public class ContractRestMapper {
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
+public interface ContractRestMapper {
 
-    public static ContractResponseDTO toResponseDTO(RentalContract contract) {
+    // En mi dominio 'RentalContract', el monto del arriendo es un Value Object 'Money' llamado 'monthlyRent'
+    // MapStruct mapeará automáticamente los demás campos (como depositAmount o paymentDueDay) si se llaman igual en la entidad.
+    @Mapping(target = "monthlyRentAmount", source = "monthlyRent.amount")
+    @Mapping(target = "depositAmount", source = "depositAmount.amount")
+    @Mapping(target = "currency", source = "monthlyRent.currency")
+    ContractResponseDTO toDto(RentalContract contract);
 
-        if (contract == null) return null;
-
-        ContractResponseDTO dto = new ContractResponseDTO();
-        dto.setId(contract.getId());
-        dto.setPropertyId(contract.getPropertyId());
-        dto.setTenantId(contract.getTenantId());
-        dto.setLandlordId(contract.getLandlordId());
-
-        dto.setMonthlyRentAmount(contract.getMonthlyRent().getAmount());
-        dto.setDepositAmount(contract.getDepositAmount().getAmount());
-        dto.setCurrency(contract.getMonthlyRent().getCurrency().toString());
-        dto.setPaymentDueDay(contract.getPaymentDueDay());
-        dto.setDailyPenaltyRate(contract.getDailyPenaltyRate());
-        dto.setStartDate(contract.getStartDate());
-        dto.setEndDate(contract.getEndDate());
-        dto.setStatus(contract.getStatus().toString());
-
-        return dto;
-    }
 }

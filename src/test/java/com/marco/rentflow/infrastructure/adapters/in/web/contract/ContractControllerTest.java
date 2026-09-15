@@ -45,24 +45,31 @@ class ContractControllerTest {
 
     @Test
     void createContract_ShouldReturn201Created() throws Exception {
-        ContractRequestDTO requestDTO = new ContractRequestDTO();
-        requestDTO.setPropertyId(UUID.randomUUID());
-        requestDTO.setTenantId(UUID.randomUUID());
-        requestDTO.setLandlordId(UUID.randomUUID());
-        requestDTO.setMonthlyRentAmount(new BigDecimal("500000"));
-        requestDTO.setDepositAmount(new BigDecimal("500000"));
-        requestDTO.setCurrency("CLP");
-        requestDTO.setPaymentDueDay(5);
-        requestDTO.setDailyPenaltyRate(new BigDecimal("0.01"));
-        requestDTO.setStartDate(LocalDate.now());
-        requestDTO.setEndDate(LocalDate.now().plusYears(1));
+        // 1. Instanciar el Record pasando todo por el constructor (sin setters)
+        ContractRequestDTO requestDTO = new ContractRequestDTO(
+                UUID.randomUUID(),                  // propertyId
+                UUID.randomUUID(),                  // tenantId
+                UUID.randomUUID(),                  // landlordId
+                new BigDecimal("500000"),       // monthlyRentAmount
+                new BigDecimal("500000"),       // depositAmount
+                "CLP",                              // currency
+                5,                                  // paymentDueDay
+                new BigDecimal("0.01"),         // dailyPenaltyRate
+                LocalDate.now(),                    // startDate
+                LocalDate.now().plusYears(1)        // endDate
+        );
 
+        // 2. Extraer usando métodos planos (sin 'get')
         RentalContract mockContract = RentalContract.create(
-                requestDTO.getPropertyId(), requestDTO.getTenantId(), requestDTO.getLandlordId(),
-                new Money(requestDTO.getMonthlyRentAmount(), Currency.CLP),
-                new Money(requestDTO.getDepositAmount(), Currency.CLP),
-                requestDTO.getPaymentDueDay(), requestDTO.getDailyPenaltyRate(),
-                requestDTO.getStartDate(), requestDTO.getEndDate()
+                requestDTO.propertyId(),
+                requestDTO.tenantId(),
+                requestDTO.landlordId(),
+                new Money(requestDTO.monthlyRentAmount(), Currency.CLP),
+                new Money(requestDTO.depositAmount(), Currency.CLP),
+                requestDTO.paymentDueDay(),
+                requestDTO.dailyPenaltyRate(),
+                requestDTO.startDate(),
+                requestDTO.endDate()
         );
 
         Mockito.when(createContractUseCase.execute(
