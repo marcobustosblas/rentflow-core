@@ -31,25 +31,28 @@ public class PaymentController {
     @PostMapping("/checkout")
     public ResponseEntity<PaymentCheckoutResponseDTO> initiateCheckout(@Valid @RequestBody PaymentCheckoutRequestDTO request) {
         String checkoutUrl = checkoutUseCase.execute(
-                request.getTenantId(),
-                request.getContractId(),
-                request.getPaymentDate()
+                request.userId(),
+                request.referenceId(),
+                request.paymentTarget(),
+                request.paymentDate()
         );
-        return ResponseEntity.ok(new PaymentCheckoutResponseDTO(checkoutUrl));
+        // 2. Instancio el Record de salida pasando los 3 argumentos obligatorios
+        // Dejo el UUID en null por ahora, ya que el Gateway de pago se encargará del ID en esta etapa
+        return ResponseEntity.ok(new PaymentCheckoutResponseDTO(null, checkoutUrl, "PENDING"));
     }
 
     @PostMapping("/webhook")
     public ResponseEntity<Void> handleWebhook(@Valid @RequestBody PaymentWebhookRequestDTO request) {
-        Currency currency = Currency.valueOf(request.getCurrency());
-        Money amountPaid = new Money(request.getAmountPaid(), currency);
+        Currency currency = Currency.valueOf(request.currency());
+        Money amountPaid = new Money(request.amountPaid(), currency);
 
         // Ahora request.getPaymentDate() devuelve un LocalDateTime, encajando perfecto con el caso de uso
         processPaymentUseCase.execute(
-                request.getIdempotencyKey(),
+                request.idempotencyKey(),
                 amountPaid,
-                request.getPaymentDate(),
-                request.getTransactionRef(),
-                request.getReceiptUrl()
+                request.paymentDate(),
+                request.transactionRef(),
+                request.receiptUrl()
         );
         return ResponseEntity.ok().build();
     }

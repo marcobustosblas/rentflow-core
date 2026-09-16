@@ -37,20 +37,22 @@ public class PropertyControllerTest {
     void createProperty_ShouldReturn201Created() throws Exception {
         // 1. Preparar el JSON de entrada (El Request)
         PropertyRequestDTO requestDTO = new PropertyRequestDTO(
-        requestDTO.address("Av. Siempre Viva 123"),
-        requestDTO.setMonthlyRentAmount(new BigDecimal("500000")),
-        requestDTO.setCurrency("CLP"),
-        requestDTO.setLandlordId(UUID.randomUUID()),
-        requestDTO.setBankAccountId(UUID.randomUUID()));
+                "Av. Siempre Viva 123",
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                new BigDecimal("500000"),
+                "CLP"
+        );
 
         // 2. Simular el comportamiento del Caso de Uso (El Mock)
         Property mockProperty = createPropertyUseCase.execute(
-                requestDTO.getAddress(),
-                new Money(requestDTO.getMonthlyRentAmount(), Currency.valueOf(requestDTO.getCurrency())),
-                requestDTO.getLandlordId(),
-                requestDTO.getBankAccountId()
+                requestDTO.address(),
+                requestDTO.landlordId(),
+                requestDTO.bankAccountId(),
+                new Money(requestDTO.monthlyRentAmount(), Currency.valueOf(requestDTO.currency())),
+                requestDTO.currency()
         );
-        Mockito.when(createPropertyUseCase.execute(any(), any(), any(), any()))
+        Mockito.when(createPropertyUseCase.execute(any(), any(), any(), any(), any()))
                 .thenReturn(mockProperty);
 
         // 3. Ejecutar el POST y verificar el estado HTTP 201

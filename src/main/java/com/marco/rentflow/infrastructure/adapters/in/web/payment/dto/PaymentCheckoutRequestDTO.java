@@ -1,42 +1,26 @@
 package com.marco.rentflow.infrastructure.adapters.in.web.payment.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
 import java.time.LocalDate;
 import java.util.UUID;
 
-public class PaymentCheckoutRequestDTO {
+public record PaymentCheckoutRequestDTO (
 
-    @NotNull(message = "Tenant ID is required")
-    private UUID tenantId;
+    @NotNull(message = "Tenant or Landlord ID is required")
+    UUID userId,
 
-    @NotNull(message = "Contract ID is required")
-    private UUID contractId;
+    @NotNull(message = "Reference ID is required")
+    UUID referenceId,
+
+    @NotBlank(message = "Payment target is required")
+    @Pattern(regexp = "^(RENT|SAAS)$", message = "Target must be RENT or SAAS")
+    String paymentTarget,
 
     @NotNull(message = "Payment date is required")
-    private LocalDate paymentDate;
+    LocalDate paymentDate
 
-    public PaymentCheckoutRequestDTO() {}
+) {}
 
-    public UUID getTenantId() {
-        return tenantId;
-    }
-    public void setTenantId(UUID tenantId) {
-        this.tenantId = tenantId;
-    }
-
-    public UUID getContractId() {
-        return contractId;
-    }
-    public void setContractId(UUID contractId) {
-        this.contractId = contractId;
-    }
-
-    public LocalDate getPaymentDate() {
-        return paymentDate;
-    }
-    public void setPaymentDate(LocalDate paymentDate) {
-        this.paymentDate = paymentDate;
-    }
-
-}

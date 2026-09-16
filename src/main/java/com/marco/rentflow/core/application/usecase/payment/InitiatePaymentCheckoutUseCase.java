@@ -26,14 +26,14 @@ public class InitiatePaymentCheckoutUseCase {
     }
 
     /* 1. Recibe los IDs reales desde el Controller */
-    public String execute(UUID tenantId, UUID contractId, LocalDate paymentDate) {
+    public String execute(UUID userId, UUID referenceId, String paymentTarget, LocalDate paymentDate) {
 
         /* 2. Buscar el contrato */
-        RentalContract contract = contractRepository.findById(contractId)
+        RentalContract contract = contractRepository.findById(referenceId)
                 .orElseThrow(() -> new IllegalArgumentException("Contract not found"));
 
         /* 3. Validar autorización */
-        if (!contract.getTenantId().equals(tenantId)) {
+        if (!contract.getTenantId().equals(userId)) {
             throw new IllegalStateException("Unauthorized tenant");
         }
 
@@ -42,7 +42,7 @@ public class InitiatePaymentCheckoutUseCase {
         Money calculateTotal = contract.calculateTotalWithPenalty(paymentDate, dueDate);
 
         /* 5, 6, 7 - Reutilizar cobro pendiente si ya existe para este contrato y vencimiento */
-        Optional<PaymentRecord> existingPending = paymentRepository.findByContractId(contractId).stream()
+        Optional<PaymentRecord> existingPending = paymentRepository.findByContractId(referenceId).stream()
                 .filter(p -> p.isPending() && p.getDueDate().equals(dueDate))
                 .findFirst();
 
@@ -50,10 +50,10 @@ public class InitiatePaymentCheckoutUseCase {
         if (existingPending.isPresent()) {
             pendingPayment = existingPending.get();
         } else {
-            String idempotencyKey = "PAY-" + contractId + "-" + dueDate.getYear() + "-" + String.format("%02d", dueDate.getMonthValue());
+            String idempotencyKey = "PAY-" + referenceId + "-" + dueDate.getYear() + "-" + String.format("%02d", dueDate.getMonthValue());
             // AQUí SE APLICA EL BOUNDED CONTEXT AGNÓSTICO
             pendingPayment = PaymentRecord.createPending(
-                    contractId, // referenceId (El ID de la entidad que origina el cobro)
+                    referenceId, // referenceId (El ID de la entidad que origina el cobro)
                     PaymentTarget.RENT, // target (El Enum exacto)
                     dueDate,
                     calculateTotal,

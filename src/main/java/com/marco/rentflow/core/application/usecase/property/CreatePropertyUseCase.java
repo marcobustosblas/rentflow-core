@@ -29,7 +29,7 @@ public class CreatePropertyUseCase {
     /* Registro caso de uso para nueva propiedad */
 
     /* 1 */
-    public Property execute(String address, Money basePrice, UUID landlordId, UUID bankAccountId) {
+    public Property execute(String address, UUID landlordId, UUID bankAccountId, Money basePrice, String currency) {
 
         /* 2 - Validar límites de la suscripción (Regla de Negocio) */
         Subscription subscription = subscriptionRepository.findByLandlordId(landlordId)

@@ -47,13 +47,15 @@ class PaymentControllerTest {
 
     @Test
     void initiateCheckout_ShouldReturn200AndUrl() throws Exception {
-        PaymentCheckoutRequestDTO requestDTO = new PaymentCheckoutRequestDTO();
-        requestDTO.setTenantId(UUID.randomUUID());
-        requestDTO.setContractId(UUID.randomUUID());
-        requestDTO.setPaymentDate(LocalDate.now());
+            PaymentCheckoutRequestDTO requestDTO = new PaymentCheckoutRequestDTO(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "RENT",
+            LocalDate.now()
+        );
 
         String fakeWebpayUrl = "https://webpay.cl/pagar/123";
-        Mockito.when(checkoutUseCase.execute(any(), any(), any())).thenReturn(fakeWebpayUrl);
+        Mockito.when(checkoutUseCase.execute(any(), any(), any(), any())).thenReturn(fakeWebpayUrl);
 
         mockMvc.perform(post("/api/v1/payments/checkout")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -64,13 +66,14 @@ class PaymentControllerTest {
 
     @Test
     void handleWebhook_ShouldReturn200OkEmptyBody() throws Exception {
-        PaymentWebhookRequestDTO requestDTO = new PaymentWebhookRequestDTO();
-        requestDTO.setIdempotencyKey("PAY-RENT-123-2026-03");
-        requestDTO.setAmountPaid(new BigDecimal("500000"));
-        requestDTO.setCurrency("CLP");
-        requestDTO.setPaymentDate(LocalDateTime.now());
-        requestDTO.setTransactionRef("TX-999");
-        requestDTO.setReceiptUrl("https://receipts.org/rx-999");
+        PaymentWebhookRequestDTO requestDTO = new PaymentWebhookRequestDTO(
+            "PAY-RENT-123-2026-03",
+            new BigDecimal("500000"),
+            "CLP",
+            LocalDateTime.now(),
+            "TX-999",
+            "https://receipts.org/rx-999"
+        );
 
         // processPaymentUseCase retorna void en el controller (lo ignoro), pero simulo éxito devolviendo un objeto dummy o nada.
         // Como no asigno el retorno en el Controller, Mockito devuelve null por defecto, lo cual es perfecto.
