@@ -43,9 +43,10 @@ public class PropertyController {
         // b- Delego el trabajo duro al Caso de Uso (El Orquestador)
         Property createdProperty = createPropertyUseCase.execute(
                 requestDTO.address(),
-                basePrice,
                 requestDTO.landlordId(),
-                requestDTO.bankAccountId()
+                requestDTO.bankAccountId(),
+                basePrice,
+                requestDTO.currency()
         );
         // c- Traducir la Entidad de vuelta a un DTO seguro para la web
         PropertyResponseDTO responseDTO = propertyRestMapper.toDto(createdProperty);
