@@ -101,7 +101,7 @@ public class PropertyPostgresAdapterTest extends AbstractIntegrationTest {
         propertyPostgresAdapter.save(rentedProp);
 
         // Act - se agrego esto para probar la consulta de propiedades disponibles usando la query JPQL personalizada
-        List<Property> availableProperties = propertyPostgresAdapter.findAllAvailable(PropertyStatus.AVAILABLE.name());
+        List<Property> availableProperties = propertyPostgresAdapter.findByStatus(PropertyStatus.AVAILABLE.name());
 
         // Assert
         assertThat(availableProperties).extracting(Property::getId)

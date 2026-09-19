@@ -18,8 +18,7 @@ public class CreatePropertyUseCase {
     private final BankAccountRepository bankAccountRepository;
 
     public CreatePropertyUseCase(
-            PropertyRepository propertyRepository,
-            SubscriptionRepository subscriptionRepository,
+            PropertyRepository propertyRepository, SubscriptionRepository subscriptionRepository,
             BankAccountRepository bankAccountRepository) {
         this.propertyRepository = propertyRepository;
         this.subscriptionRepository = subscriptionRepository;

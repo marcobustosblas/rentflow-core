@@ -42,8 +42,8 @@ public class PropertyPostgresAdapter implements PropertyRepository {
     }
 
     @Override
-    public List<Property> findAllAvailable(String status) {
-        return springDataRepository.findAllAvailable(PropertyStatus.AVAILABLE.toString())
+    public List<Property> findByStatus(String status) {
+        return springDataRepository.findByStatus(status)
                 .stream()
                 .map(persistenceMapper::toDomain)
                 .toList();

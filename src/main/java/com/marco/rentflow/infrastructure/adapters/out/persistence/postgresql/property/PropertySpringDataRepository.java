@@ -13,9 +13,9 @@ import java.util.UUID;
 public interface PropertySpringDataRepository extends JpaRepository<PropertyJpaEntity, UUID> {
     List<PropertyJpaEntity> findByLandlordId(UUID landlordId);
 
-    // se agrego esto para definir la consulta JPQL con @Query ya que Spring Data JPA fallaba buscando una propiedad 'allAvailable' en PropertyJpaEntity al intentar inferir la query del nombre del metodo
+    // se agregó esto para definir la consulta JPQL con @Query, ya que Spring Data JPA fallaba buscando una propiedad 'allAvailable' en PropertyJpaEntity al intentar inferir la query del nombre del metodo
     @Query("SELECT p FROM PropertyJpaEntity p WHERE p.status = :status")
-    List<PropertyJpaEntity> findAllAvailable(@Param("status") String status);
+    List<PropertyJpaEntity> findByStatus(@Param("status") String status);
 
     long countByLandlordId(UUID landlordId);
 }

@@ -30,7 +30,7 @@ public class PaymentController {
 
     @PostMapping("/checkout")
     public ResponseEntity<PaymentCheckoutResponseDTO> initiateCheckout(@Valid @RequestBody PaymentCheckoutRequestDTO request) {
-        String checkoutUrl = checkoutUseCase.execute(
+        InitiatePaymentCheckoutUseCase.CheckoutResult checkoutUrl = checkoutUseCase.execute(
                 request.userId(),
                 request.referenceId(),
                 request.paymentTarget(),
