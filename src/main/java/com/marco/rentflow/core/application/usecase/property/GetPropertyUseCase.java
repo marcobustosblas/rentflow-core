@@ -1,6 +1,7 @@
 package com.marco.rentflow.core.application.usecase.property;
 
 import com.marco.rentflow.core.domain.property.Property;
+import com.marco.rentflow.core.domain.property.exception.PropertyNotFoundException;
 import com.marco.rentflow.core.domain.property.ports.out.PropertyRepository;
 
 import java.util.UUID;
@@ -16,7 +17,7 @@ public class GetPropertyUseCase {
     /**/
     public Property execute(UUID propertyId) {
         return propertyRepository.findById(propertyId)
-                .orElseThrow(() -> new IllegalArgumentException("Property not found with ID: " + propertyId));
+                .orElseThrow(() -> new PropertyNotFoundException(propertyId));
     }
 
 }

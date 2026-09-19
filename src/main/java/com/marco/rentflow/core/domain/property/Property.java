@@ -110,10 +110,6 @@ public class Property {
         return bankAccountId;
     }
 
-    public void setBankAccountId(UUID bankAccountId) {
-        this.bankAccountId = bankAccountId;
-    }
-
     public String getAddress() {
         return address;
     }
@@ -124,10 +120,6 @@ public class Property {
 
     public Money getBasePrice() {
         return basePrice;
-    }
-
-    public void setBasePrice(Money basePrice) {
-        this.basePrice = basePrice;
     }
 
     public PropertyStatus getStatus() {

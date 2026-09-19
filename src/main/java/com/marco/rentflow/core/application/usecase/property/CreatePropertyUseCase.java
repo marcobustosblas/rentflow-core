@@ -2,12 +2,14 @@ package com.marco.rentflow.core.application.usecase.property;
 
 import com.marco.rentflow.core.domain.bankaccount.BankAccount;
 import com.marco.rentflow.core.domain.bankaccount.ports.out.BankAccountRepository;
+import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.core.domain.common.Money;
 import com.marco.rentflow.core.domain.property.Property;
 import com.marco.rentflow.core.domain.property.ports.out.PropertyRepository;
 import com.marco.rentflow.core.domain.subscription.Subscription;
 import com.marco.rentflow.core.domain.subscription.ports.out.SubscriptionRepository;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -28,7 +30,7 @@ public class CreatePropertyUseCase {
     /* Registro caso de uso para nueva propiedad */
 
     /* 1 */
-    public Property execute(String address, UUID landlordId, UUID bankAccountId, Money basePrice, String currency) {
+    public Property execute(UUID landlordId, UUID bankAccountId, String address, BigDecimal basePrice, String currency) {
 
         /* 2 - Validar límites de la suscripción (Regla de Negocio) */
         Subscription subscription = subscriptionRepository.findByLandlordId(landlordId)
@@ -50,7 +52,9 @@ public class CreatePropertyUseCase {
         }
 
         /* 4 - Crear la propiedad */
-        Property property = Property.registerNew(address, basePrice, landlordId);
+        // (ajuste hecho del priceAsMoney -> 19-9-26, 16:35 hr)
+        Money priceAsMoney = new Money(basePrice, Currency.valueOf(currency));
+        Property property = Property.registerNew(address, priceAsMoney, landlordId);
 
         /* 5 - Asignar la cuenta (Ya sé que es segura) */
         if (bankAccountId != null) {

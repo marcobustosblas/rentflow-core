@@ -1,6 +1,6 @@
 package com.marco.rentflow.infrastructure.adapters.in.web.property;
 
-import com.marco.rentflow.core.application.usecase.property.CreatePropertyUseCase;
+import com.marco.rentflow.core.application.usecase.property.*;
 
 import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.core.domain.common.Money;
@@ -11,14 +11,9 @@ import com.marco.rentflow.infrastructure.adapters.in.web.property.mapper.Propert
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -26,47 +21,75 @@ import java.util.UUID;
 public class PropertyController {
 
     private final CreatePropertyUseCase createPropertyUseCase;
-    private final PropertyRestMapper propertyRestMapper;
+    private final GetPropertyUseCase getPropertyUseCase;
+    private final ListLandlordPropertiesUseCase listLandlordPropertiesUseCase;
+    private final ListPropertiesByStatusUseCase listPropertiesByStatusUseCase;
+    private final UpdatePropertyUseCase updatePropertyUseCase;
+    private final PropertyRestMapper mapper;
 
-    public PropertyController(CreatePropertyUseCase useCase, PropertyRestMapper mapper) {
-        this.createPropertyUseCase = useCase;
-        this.propertyRestMapper = mapper;
+    public PropertyController(CreatePropertyUseCase createPropertyUseCase, GetPropertyUseCase getPropertyUseCase, ListLandlordPropertiesUseCase listLandlordPropertiesUseCase, ListPropertiesByStatusUseCase listPropertiesByStatusUseCase, UpdatePropertyUseCase updatePropertyUseCase, PropertyRestMapper propertyRestMapper) {
+        this.createPropertyUseCase = createPropertyUseCase;
+        this.getPropertyUseCase = getPropertyUseCase;
+        this.listLandlordPropertiesUseCase = listLandlordPropertiesUseCase;
+        this.listPropertiesByStatusUseCase = listPropertiesByStatusUseCase;
+        this.updatePropertyUseCase = updatePropertyUseCase;
+        this.mapper = propertyRestMapper;
     }
 
     @PostMapping
-    public ResponseEntity<PropertyResponseDTO> create(@Valid @RequestBody PropertyRequestDTO requestDTO) {
-        // a- Transformar datos del front al value object del dominio
-        Money basePrice = new Money(
-                requestDTO.monthlyRentAmount(),
-                Currency.valueOf(requestDTO.currency())
-        );
-        // b- Delego el trabajo duro al Caso de Uso (El Orquestador)
+    public ResponseEntity<PropertyResponseDTO> create(@Valid @RequestBody PropertyRequestDTO request) {
+        /*
+         * ZERO TRUST: Por ahora, el DTO trae el landlordId.
+         * En la Fase 2 (Seguridad), eliminaré landlordId del DTO y lo
+         * extraeré directamente del Token JWT inyectado en el SecurityContext.
+         */
+
+        // a- Delego el trabajo duro al Caso de Uso (El Orquestador)
         Property createdProperty = createPropertyUseCase.execute(
-                requestDTO.address(),
-                requestDTO.landlordId(),
-                requestDTO.bankAccountId(),
-                basePrice,
-                requestDTO.currency()
+                request.landlordId(),
+                request.payoutAccountId(),
+                request.address(),
+                request.basePrice(),
+                request.currency()
         );
         // c- Traducir la Entidad de vuelta a un DTO seguro para la web
-        PropertyResponseDTO responseDTO = propertyRestMapper.toDto(createdProperty);
+        PropertyResponseDTO response = mapper.toDto(createdProperty);
         // d- Devolver HTTP 201 (Created) con el JSON mapeado
-        return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // --- Esqueletos para GET y PUT (plan de la W4) ---
-
     @GetMapping("/{id}")
-    public ResponseEntity<PropertyResponseDTO> getProperty(@PathVariable UUID id) {
-        // En el futuro: Property p = getPropertyUseCase.execute(id);
-        // return ResponseEntity.ok(PropertyRestMapper.toResponseDTO(p));
-        return ResponseEntity.ok().build();
+    public ResponseEntity<PropertyResponseDTO> getById(@PathVariable UUID id) {
+        var property = getPropertyUseCase.execute(id);
+        return ResponseEntity.ok(mapper.toDto(property));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<PropertyResponseDTO> updateProperty(@Valid @PathVariable UUID id, @RequestBody PropertyRequestDTO requestDTO) {
-        // En el futuro: UpdatePropertyUseCase...
-        return ResponseEntity.ok().build();
+    public ResponseEntity<PropertyResponseDTO> update(
+            @PathVariable UUID id, @Valid @RequestBody PropertyRequestDTO request) {
+        var propertyUpdated = updatePropertyUseCase.execute(
+                id,
+                request.landlordId(),
+                request.payoutAccountId(),
+                request.address(),
+                request.basePrice(),
+                request.currency());
+        return ResponseEntity.ok(mapper.toDto(propertyUpdated));
+    }
+
+    @GetMapping("/landlord/{landlordId}")
+    public ResponseEntity<List<PropertyResponseDTO>> getByLandLord(@PathVariable UUID landlordId) {
+        List<Property> properties = listLandlordPropertiesUseCase.execute(landlordId);
+        var response = properties.stream().map(mapper::toDto).toList();
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping()
+    public ResponseEntity<List<PropertyResponseDTO>> getByStatus
+            (@RequestParam(required = false, defaultValue = "AVAILABLE") String status){
+        var properties = listPropertiesByStatusUseCase.execute(status);
+        var response = properties.stream().map(mapper::toDto).toList();
+        return ResponseEntity.ok(response);
     }
 
 }

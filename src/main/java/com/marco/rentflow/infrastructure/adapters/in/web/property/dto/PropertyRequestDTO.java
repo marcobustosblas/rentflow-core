@@ -8,20 +8,19 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record PropertyRequestDTO(
-        @NotBlank(message = "Address is required")
-        String address,
-
         @NotNull(message = "Landlord ID is required")
         UUID landlordId,
 
-        @NotNull(message = "Bank Account ID is required")
-        UUID bankAccountId,
+        UUID payoutAccountId, // opcional, puedo asignarlo after
 
-        @NotNull(message = "Rent amount is required")
+        @NotBlank(message = "Address cannot be empty")
+        String address,
+
+        @NotNull(message = "Base price is mandatory")
         @Positive(message = "Rent amount must be greater than zero")
-        BigDecimal monthlyRentAmount,
+        BigDecimal basePrice,
 
-        @NotBlank(message = "Currency is required")
+        @NotBlank(message = "Currency is mandatory")
         @Pattern(regexp = "^(CLP|UF|USD)$", message = "Currency must be CLP, UF, or USD")
         String currency
 ) {}
