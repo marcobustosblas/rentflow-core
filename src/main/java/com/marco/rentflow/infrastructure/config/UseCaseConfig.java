@@ -2,7 +2,7 @@ package com.marco.rentflow.infrastructure.config;
 
 import com.marco.rentflow.core.application.port.out.NotificationSenderPort;
 import com.marco.rentflow.core.application.port.out.PaymentGatewayPort;
-import com.marco.rentflow.core.application.usecase.contract.CreateContractUseCase;
+import com.marco.rentflow.core.application.usecase.contract.*;
 import com.marco.rentflow.core.application.usecase.payment.InitiatePaymentCheckoutUseCase;
 import com.marco.rentflow.core.application.usecase.payment.ProcessPaymentUseCase;
 import com.marco.rentflow.core.application.usecase.property.*;
@@ -17,15 +17,6 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class UseCaseConfig {
-
-    @Bean
-    public CreateContractUseCase createContractUseCase(
-            PropertyRepository propertyRepository,
-            ContractRepository contractRepository,
-            UserRepository userRepository) {
-        // Spring automáticamente inyectará el ContractPostgresAdapter aquí
-        return new CreateContractUseCase(propertyRepository, contractRepository, userRepository);
-    }
 
     // se agregó esto para proveer una implementación por defecto de PaymentGatewayPort para el Spring Context
     @Bean
@@ -87,5 +78,39 @@ public class UseCaseConfig {
             BankAccountRepository bankAccountRepository) {
         return new UpdatePropertyUseCase(propertyRepository, bankAccountRepository);
     }
+
+    /* CONTRACT USE CASES */
+
+    @Bean
+    public CreateContractUseCase createContractUseCase(
+            PropertyRepository propertyRepository,
+            ContractRepository contractRepository,
+            UserRepository userRepository) {
+        // Spring automáticamente inyectará el ContractPostgresAdapter aquí
+        return new CreateContractUseCase(propertyRepository, contractRepository, userRepository);
+    }
+
+    @Bean
+    public GetContractUseCase getContractUseCase(ContractRepository contractRepository) {
+        return new GetContractUseCase(contractRepository);
+    }
+
+    @Bean
+    public ListContractsByTenantUseCase listContractsByTenantUseCase(ContractRepository contractRepository) {
+        return new ListContractsByTenantUseCase(contractRepository);
+    }
+
+    @Bean
+    public ListContractsByLandlordUseCase listContractsByLandlordUseCase(ContractRepository contractRepository) {
+        return new ListContractsByLandlordUseCase(contractRepository);
+    }
+
+    @Bean
+    public TerminateContractUseCase terminateContractUseCase(
+            ContractRepository contractRepository,
+            PropertyRepository propertyRepository) {
+        return new TerminateContractUseCase(contractRepository, propertyRepository);
+    }
+
 
 }
