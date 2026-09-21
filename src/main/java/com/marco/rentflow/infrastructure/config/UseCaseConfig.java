@@ -39,14 +39,6 @@ public class UseCaseConfig {
         return new InitiatePaymentCheckoutUseCase(contractRepository, paymentRepository, paymentGatewayPort);
     }
 
-    // se agregó esto para registrar ProcessPaymentUseCase como Spring Bean y permitir la inyeccion en PaymentController
-    @Bean
-    public ProcessPaymentUseCase processPaymentUseCase(
-            PaymentRepository paymentRepository,
-            NotificationSenderPort notificationSenderPort) {
-        return new ProcessPaymentUseCase(paymentRepository, notificationSenderPort);
-    }
-
     /* PROPERTY USES CASES */
 
     @Bean

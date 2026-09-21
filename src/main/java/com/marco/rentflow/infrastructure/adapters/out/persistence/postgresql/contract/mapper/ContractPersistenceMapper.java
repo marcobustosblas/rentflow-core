@@ -7,8 +7,10 @@ import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.contract.ContractJpaEntity;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.property.PropertyJpaEntity;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.user.UserJpaEntity;
+import com.marco.rentflow.infrastructure.utils.DateConverter;
 import org.springframework.stereotype.Component;
 
+import java.time.ZonedDateTime;
 import java.util.UUID;
 
 @Component
@@ -24,15 +26,15 @@ public class ContractPersistenceMapper {
 
         PropertyJpaEntity propertyProxy = new PropertyJpaEntity();
         propertyProxy.setId(domain.getPropertyId());
-        // se agrego esto para asociar el proxy de landlord en propertyProxy y evitar NullPointerException al invocar property.getLandlord().getId() en toDomain
+        // se agregó esto para asociar el proxy de landlord en propertyProxy y evitar NullPointerException al invocar property.getLandlord().getId() en toDomain
         propertyProxy.setLandlord(landlordProxy);
 
         UserJpaEntity tenantProxy = new UserJpaEntity();
         tenantProxy.setId(domain.getTenantId());
 
-        // se agrego esto para convertir las fechas LocalDateTime de dominio a ZonedDateTime de JPA
-        java.time.ZonedDateTime createdAt = domain.getCreatedAt() != null ? domain.getCreatedAt().atZone(java.time.ZoneId.systemDefault()) : java.time.ZonedDateTime.now();
-        java.time.ZonedDateTime updatedAt = domain.getUpdatedAt() != null ? domain.getUpdatedAt().atZone(java.time.ZoneId.systemDefault()) : java.time.ZonedDateTime.now();
+        // se agregó esto para convertir las fechas LocalDateTime de dominio a ZonedDateTime de JPA
+        ZonedDateTime createdAt = DateConverter.toZonedDateTime(domain.getCreatedAt());
+        ZonedDateTime updatedAt = DateConverter.toZonedDateTime(domain.getUpdatedAt());
 
         return new ContractJpaEntity(
                 domain.getId(),
