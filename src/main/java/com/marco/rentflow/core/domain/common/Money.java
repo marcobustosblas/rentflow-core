@@ -1,6 +1,6 @@
 package com.marco.rentflow.core.domain.common;
 
-import com.marco.rentflow.core.domain.common.exceptions.CurrencyMismatchException;
+import com.marco.rentflow.core.domain.common.exception.CurrencyMismatchException;
 
 import java.math.BigDecimal;
 import java.util.Objects;

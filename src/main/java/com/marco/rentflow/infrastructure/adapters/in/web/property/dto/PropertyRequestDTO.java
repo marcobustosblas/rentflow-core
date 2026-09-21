@@ -4,65 +4,23 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
-
 import java.math.BigDecimal;
 import java.util.UUID;
 
-public class PropertyRequestDTO {
+public record PropertyRequestDTO(
+        @NotNull(message = "Landlord ID is required")
+        UUID landlordId,
 
-    @NotBlank(message = "Address is required")
-    private String address;
+        UUID payoutAccountId, // opcional, puedo asignarlo after
 
-    @NotNull(message = "Landlord ID is required")
-    private UUID landlordId;
+        @NotBlank(message = "Address cannot be empty")
+        String address,
 
-    @NotNull(message = "Bank Account ID is required")
-    private UUID bankAccountId;
+        @NotNull(message = "Base price is mandatory")
+        @Positive(message = "Rent amount must be greater than zero")
+        BigDecimal basePrice,
 
-    @NotNull(message = "Rent amount is required")
-    @Positive(message = "Rent amount must be greater than zero")
-    private BigDecimal monthlyRentAmount;
-
-    @NotBlank(message = "Currency is required")
-    @Pattern(regexp = "^(CLP|UF|USD)$", message = "Currency must be CLP, UF, or USD")
-    private String currency;
-
-    public PropertyRequestDTO() {}
-
-    // Getters y Setters
-    public String getAddress() {
-        return address;
-    }
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public UUID getLandlordId() {
-        return landlordId;
-    }
-    public void setLandlordId(UUID landlordId) {
-        this.landlordId = landlordId;
-    }
-
-    public UUID getBankAccountId() {
-        return bankAccountId;
-    }
-    public void setBankAccountId(UUID bankAccountId) {
-        this.bankAccountId = bankAccountId;
-    }
-
-    public BigDecimal getMonthlyRentAmount() {
-        return monthlyRentAmount;
-    }
-    public void setMonthlyRentAmount(BigDecimal monthlyRentAmount) {
-        this.monthlyRentAmount = monthlyRentAmount;
-    }
-
-    public String getCurrency() {
-        return currency;
-    }
-    public void setCurrency(String currency) {
-        this.currency = currency;
-    }
-
-}
+        @NotBlank(message = "Currency is mandatory")
+        @Pattern(regexp = "^(CLP|UF|USD)$", message = "Currency must be CLP, UF, or USD")
+        String currency
+) {}

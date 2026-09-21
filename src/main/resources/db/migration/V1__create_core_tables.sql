@@ -76,8 +76,8 @@ CREATE TABLE contracts (
 -- 6. PAYMENTS
 CREATE TABLE payments (
     id UUID PRIMARY KEY,
-    reference_id UUID NOT NULL,
-    payment_target VARCHAR(50) NOT NULL,
+    reference_id UUID NOT NULL, -- [ID POLIMÓRFICO]: UUID de la entidad origen. Si target='RENT', es el id del Contrato. Si target='SAAS', es el id de la Suscripción. NO tiene Foreign Key restrictiva.
+    payment_target VARCHAR(50) NOT NULL, -- [ENRUTADOR DE NEGOCIO]: Define el contexto exacto ('RENT' o 'SAAS'). Le dicta al backend a qué tabla pertenece el reference_id
     status VARCHAR(50) NOT NULL,
     expected_amount NUMERIC(19, 4) NOT NULL, -- Agregado: La Fuente de la Verdad (Zero Trust)
     amount_paid NUMERIC(19, 4),
