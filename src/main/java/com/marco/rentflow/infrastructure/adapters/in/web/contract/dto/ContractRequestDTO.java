@@ -19,7 +19,7 @@ public record ContractRequestDTO (
 
         @NotNull(message = "Rent amount is required")
         @Positive(message = "Rent amount must be greater than zero")
-        BigDecimal monthlyRentAmount,
+        BigDecimal rentAmount,
 
         @NotNull(message = "Deposit amount is required")
         @PositiveOrZero(message = "Deposit cannot be negative")
@@ -36,15 +36,17 @@ public record ContractRequestDTO (
         @Max(value = 31, message = "Payment day must be between 1 and 31")
         Integer paymentDueDay, // Día de pago (ej. 5)
 
-        @NotNull(message = "Penalty rate is required")
+        // @NotNull(message = "Penalty rate is required") esto esta mal por que la multa es opcional
         @PositiveOrZero(message = "Penalty rate cannot be negative")
         BigDecimal dailyPenaltyRate, // Multa diaria (ej. 0.01 para 1%)
 
         // Fechas
         @NotNull(message = "Start date is required")
+        @FutureOrPresent(message = "Start date must be today or in the future")
         LocalDate startDate,
 
         @NotNull(message = "End date is required")
+        @Future(message = "End date must be a future date")
         LocalDate endDate
 ) {}
 

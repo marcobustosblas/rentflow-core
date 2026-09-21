@@ -1,8 +1,6 @@
 package com.marco.rentflow.infrastructure.adapters.in.web.contract;
 
-import com.marco.rentflow.core.application.usecase.contract.CreateContractUseCase;
-import com.marco.rentflow.core.domain.common.Currency;
-import com.marco.rentflow.core.domain.common.Money;
+import com.marco.rentflow.core.application.usecase.contract.*;
 import com.marco.rentflow.core.domain.contract.RentalContract;
 import com.marco.rentflow.infrastructure.adapters.in.web.contract.dto.ContractRequestDTO;
 import com.marco.rentflow.infrastructure.adapters.in.web.contract.dto.ContractResponseDTO;
@@ -10,44 +8,77 @@ import com.marco.rentflow.infrastructure.adapters.in.web.contract.mapper.Contrac
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/contracts")
 public class ContractController {
 
     private final CreateContractUseCase createContractUseCase;
-    private final ContractRestMapper contractRestMapper; // Inyección de MapStruct
+    private final GetContractUseCase getContractUseCase;
+    private final ListContractsByLandlordUseCase listContractsByLandlordUseCase;
+    private final ListContractsByTenantUseCase listContractsByTenantUseCase;
+    private final TerminateContractUseCase terminateContractUseCase;
+    private final ContractRestMapper mapper; // Inyección de MapStruct
 
-    public ContractController(CreateContractUseCase createContractUseCase, ContractRestMapper contractRestMapper) {
+    public ContractController(CreateContractUseCase createContractUseCase, GetContractUseCase getContractUseCase, ListContractsByLandlordUseCase listContractsByLandlordUseCase, ListContractsByTenantUseCase listContractsByTenantUseCase, TerminateContractUseCase terminateContractUseCase, ContractRestMapper contractRestMapper) {
         this.createContractUseCase = createContractUseCase;
-        this.contractRestMapper = contractRestMapper;
+        this.getContractUseCase = getContractUseCase;
+        this.listContractsByLandlordUseCase = listContractsByLandlordUseCase;
+        this.listContractsByTenantUseCase = listContractsByTenantUseCase;
+        this.terminateContractUseCase = terminateContractUseCase;
+        this.mapper = contractRestMapper;
     }
 
     @PostMapping
-    public ResponseEntity<ContractResponseDTO> create(@Valid @RequestBody ContractRequestDTO requestDTO) {
-
-        Currency currency = Currency.valueOf(requestDTO.currency());
-        Money monthlyRent = new Money(requestDTO.monthlyRentAmount(), currency);
-        Money depositAmount = new Money(requestDTO.depositAmount(), currency);
+    public ResponseEntity<ContractResponseDTO> create(@Valid @RequestBody ContractRequestDTO request) {
 
         RentalContract contract = createContractUseCase.execute(
-                requestDTO.propertyId(),
-                requestDTO.tenantId(),
-                requestDTO.landlordId(),
-                monthlyRent,
-                depositAmount,
-                requestDTO.paymentDueDay(),
-                requestDTO.dailyPenaltyRate(),
-                requestDTO.startDate(),
-                requestDTO.endDate()
+                request.propertyId(),
+                request.tenantId(),
+                request.landlordId(),
+                request.rentAmount(),
+                request.depositAmount(),
+                request.currency(),
+                request.paymentDueDay(),
+                request.dailyPenaltyRate(),
+                request.startDate(),
+                request.endDate()
         );
 
-        ContractResponseDTO responseDTO = contractRestMapper.toDto(contract);
-        return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
+        ContractResponseDTO response = mapper.toDto(contract);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ContractResponseDTO> getById(@PathVariable UUID id) {
+        RentalContract contract = getContractUseCase.execute(id);
+        return ResponseEntity.ok(mapper.toDto(contract));
+    }
+
+    @GetMapping("/landlord/{landlordId}")
+    public ResponseEntity<List<ContractResponseDTO>> getByLandlord(@PathVariable UUID landlordId) {
+        var contracts = listContractsByLandlordUseCase.execute(landlordId);
+        var responses = contracts.stream().map(mapper::toDto).toList();
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/tenant/{tenantId}")
+    public ResponseEntity<List<ContractResponseDTO>> getByTenant(@PathVariable UUID tenantId) {
+        List<RentalContract> contracts = listContractsByTenantUseCase.execute(tenantId);
+        List<ContractResponseDTO> responses = contracts.stream().map(mapper::toDto).toList();
+        return ResponseEntity.ok(responses);
+    }
+
+    @PatchMapping("/{id}/terminate")
+    public ResponseEntity<ContractResponseDTO> terminate(@PathVariable UUID id,
+                                                         @RequestParam UUID landlordId) {
+        // landlordId viene como RequestParam provisoriamente hasta implementar SecurityContext
+        RentalContract terminatedContract = terminateContractUseCase.execute(id, landlordId);
+        return ResponseEntity.ok(mapper.toDto(terminatedContract));
     }
 
 }
