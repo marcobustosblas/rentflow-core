@@ -21,7 +21,7 @@ public class PaymentWebhookDispatcher {
 
     /**
      * Recibe los datos crudos del Webhook, procesa el pago y enruta el flujo
-     * de negocio según el objetivo (RENT o SAAS).
+     * de business según el objetivo (RENT o SAAS).
      */
     public void dispatcher(String idempotencyKey, Money amountPaid, LocalDateTime actualPaymentDate, String transactionRef, String receiptUrl) {
         // 1. Procesar el pago en el dominio (agnóstico)

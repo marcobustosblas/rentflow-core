@@ -1,7 +1,7 @@
 package com.marco.rentflow.infrastructure.adapters.in.web.payment;
 
 import com.marco.rentflow.core.application.usecase.payment.InitiatePaymentCheckoutUseCase;
-import com.marco.rentflow.core.application.usecase.payment.ProcessPaymentUseCase;
+import com.marco.rentflow.core.application.usecase.payment.PaymentWebhookDispatcher;
 import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.core.domain.common.Money;
 import com.marco.rentflow.infrastructure.adapters.in.web.payment.dto.PaymentCheckoutRequestDTO;
@@ -19,26 +19,24 @@ import org.springframework.web.bind.annotation.RestController;
 public class PaymentController {
 
     private final InitiatePaymentCheckoutUseCase checkoutUseCase;
-    private final ProcessPaymentUseCase processPaymentUseCase;
+    private final PaymentWebhookDispatcher webhookDispatcher; // 1. aquí ahora le meto el dispatcher
 
-    public PaymentController(
-            InitiatePaymentCheckoutUseCase initiatePaymentCheckoutUseCase,
-            ProcessPaymentUseCase processPaymentUseCase) {
-        this.checkoutUseCase = initiatePaymentCheckoutUseCase;
-        this.processPaymentUseCase = processPaymentUseCase;
+    public PaymentController(InitiatePaymentCheckoutUseCase checkoutUseCase, PaymentWebhookDispatcher paymentWebhookDispatcher) {
+        this.checkoutUseCase = checkoutUseCase;
+        this.webhookDispatcher = paymentWebhookDispatcher;
     }
 
     @PostMapping("/checkout")
     public ResponseEntity<PaymentCheckoutResponseDTO> initiateCheckout(@Valid @RequestBody PaymentCheckoutRequestDTO request) {
-        InitiatePaymentCheckoutUseCase.CheckoutResult checkoutUrl = checkoutUseCase.execute(
+        InitiatePaymentCheckoutUseCase.CheckoutResult result = checkoutUseCase.execute(
                 request.userId(),
                 request.referenceId(),
                 request.paymentTarget(),
                 request.paymentDate()
         );
-        // 2. Instancio el Record de salida pasando los 3 argumentos obligatorios
+        // 2. Instance el Record de salida pasando los 3 argumentos obligatorios
         // Dejo el UUID en null por ahora, ya que el Gateway de pago se encargará del ID en esta etapa
-        return ResponseEntity.ok(new PaymentCheckoutResponseDTO(null, checkoutUrl, "PENDING"));
+        return ResponseEntity.ok(new PaymentCheckoutResponseDTO(null, result.checkoutResult(), "PENDING"));
     }
 
     @PostMapping("/webhook")
@@ -46,8 +44,8 @@ public class PaymentController {
         Currency currency = Currency.valueOf(request.currency());
         Money amountPaid = new Money(request.amountPaid(), currency);
 
-        // Ahora request.getPaymentDate() devuelve un LocalDateTime, encajando perfecto con el caso de uso
-        processPaymentUseCase.execute(
+        // 3. El Controlador ahora actúa como simple pasarela, el Dispatcher toma el control
+        webhookDispatcher.dispatcher(
                 request.idempotencyKey(),
                 amountPaid,
                 request.paymentDate(),
