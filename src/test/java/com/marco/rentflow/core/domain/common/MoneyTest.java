@@ -1,6 +1,6 @@
 package com.marco.rentflow.core.domain.common;
 
-import com.marco.rentflow.core.domain.common.exceptions.CurrencyMismatchException;
+import com.marco.rentflow.core.domain.common.exception.CurrencyMismatchException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
