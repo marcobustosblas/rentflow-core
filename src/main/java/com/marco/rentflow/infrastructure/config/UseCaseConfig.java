@@ -44,8 +44,9 @@ public class UseCaseConfig {
     public CreatePropertyUseCase createPropertyUseCase(
             PropertyRepository propertyRepository,
             SubscriptionRepository subscriptionRepository,
-            BankAccountRepository bankAccountRepository) {
-        return new CreatePropertyUseCase(propertyRepository, subscriptionRepository, bankAccountRepository);
+            BankAccountRepository bankAccountRepository,
+            UserRepository userRepository) {
+        return new CreatePropertyUseCase(propertyRepository, subscriptionRepository, bankAccountRepository, userRepository);
     }
 
     @Bean

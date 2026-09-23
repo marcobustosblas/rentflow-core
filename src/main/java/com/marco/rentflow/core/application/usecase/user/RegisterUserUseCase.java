@@ -19,7 +19,6 @@ public class RegisterUserUseCase {
     }
 
     public User execute(String fullName, String email, String rawPassword,
-
                         String rut, String phoneNumber, Role requestedRole) {
 
         if (requestedRole == null) {
