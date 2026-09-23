@@ -2,18 +2,10 @@ package com.marco.rentflow.core.application.usecase.payment;
 
 import com.marco.rentflow.core.application.port.out.NotificationSenderPort;
 import com.marco.rentflow.core.domain.common.Money;
-import com.marco.rentflow.core.domain.contract.RentalContract;
-import com.marco.rentflow.core.domain.contract.ports.out.ContractRepository;
 import com.marco.rentflow.core.domain.payment.PaymentRecord;
 import com.marco.rentflow.core.domain.payment.ports.out.PaymentRepository;
-import com.marco.rentflow.core.domain.user.User;
-import com.marco.rentflow.core.domain.user.UserRepository;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.UUID;
 
 public class ProcessPaymentUseCase {
 

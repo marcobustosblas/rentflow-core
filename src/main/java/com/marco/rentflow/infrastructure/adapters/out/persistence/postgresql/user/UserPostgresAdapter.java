@@ -1,7 +1,7 @@
 package com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.user;
 
 import com.marco.rentflow.core.domain.user.User;
-import com.marco.rentflow.core.domain.user.UserRepository;
+import com.marco.rentflow.core.domain.user.port.out.UserRepository;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.user.mapper.UserPersistenceMapper;
 import org.springframework.stereotype.Component;
 

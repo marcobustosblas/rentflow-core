@@ -4,14 +4,13 @@ import com.marco.rentflow.core.application.port.out.NotificationSenderPort;
 import com.marco.rentflow.core.application.port.out.PaymentGatewayPort;
 import com.marco.rentflow.core.application.usecase.contract.*;
 import com.marco.rentflow.core.application.usecase.payment.InitiatePaymentCheckoutUseCase;
-import com.marco.rentflow.core.application.usecase.payment.ProcessPaymentUseCase;
 import com.marco.rentflow.core.application.usecase.property.*;
 import com.marco.rentflow.core.domain.bankaccount.ports.out.BankAccountRepository;
 import com.marco.rentflow.core.domain.contract.ports.out.ContractRepository;
 import com.marco.rentflow.core.domain.payment.ports.out.PaymentRepository;
 import com.marco.rentflow.core.domain.property.ports.out.PropertyRepository;
 import com.marco.rentflow.core.domain.subscription.ports.out.SubscriptionRepository;
-import com.marco.rentflow.core.domain.user.UserRepository;
+import com.marco.rentflow.core.domain.user.port.out.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

@@ -8,7 +8,7 @@ import com.marco.rentflow.core.domain.property.Property;
 import com.marco.rentflow.core.domain.property.exception.PropertyNotFoundException;
 import com.marco.rentflow.core.domain.property.ports.out.PropertyRepository;
 import com.marco.rentflow.core.domain.user.User;
-import com.marco.rentflow.core.domain.user.UserRepository;
+import com.marco.rentflow.core.domain.user.port.out.UserRepository;
 
 import java.time.LocalDate;
 import java.util.UUID;

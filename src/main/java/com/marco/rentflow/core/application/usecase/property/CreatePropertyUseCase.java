@@ -10,7 +10,6 @@ import com.marco.rentflow.core.domain.subscription.Subscription;
 import com.marco.rentflow.core.domain.subscription.ports.out.SubscriptionRepository;
 
 import java.math.BigDecimal;
-import java.util.Optional;
 import java.util.UUID;
 
 public class CreatePropertyUseCase {
