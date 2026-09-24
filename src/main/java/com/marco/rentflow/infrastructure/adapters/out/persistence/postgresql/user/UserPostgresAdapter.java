@@ -45,4 +45,9 @@ public class UserPostgresAdapter implements UserRepository {
     public boolean existsByEmail(String email) {
         return springDataRepository.existsByEmail(email);
     }
+
+    @Override
+    public boolean existsByRut(String rut) {
+        return springDataRepository.existsByRut(rut);
+    }
 }
