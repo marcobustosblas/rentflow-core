@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 @Mapper(componentModel = "spring")
 public interface UserRestMapper {
 
-    @Mapping(source = "status", target = "status")
     @Mapping(source = "createdAt", target = "created")
     @Mapping(source = "roles", target = "roles", qualifiedByName = "mapRolesToStrings")
     UserResponseDTO toResponseDTO(User user);
