@@ -158,7 +158,10 @@ public class RentalContract {
         );
     }
 
-    // Tenant assignment
+    /** Tenant assignment
+     * Comportamiento que usaré cuando el inquilino haga click en el correo
+     * y se registre en la plataforma.
+     */
     public void assignTenant(UUID newTenantId) {
         Objects.requireNonNull(newTenantId, "Tenant ID cannot be null");
 

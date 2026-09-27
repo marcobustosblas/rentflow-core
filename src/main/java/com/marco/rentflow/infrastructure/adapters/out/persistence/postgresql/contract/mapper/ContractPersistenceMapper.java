@@ -1,5 +1,6 @@
 package com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.contract.mapper;
 
+import com.marco.rentflow.core.domain.contract.ContractSource;
 import com.marco.rentflow.core.domain.contract.RentalContract;
 import com.marco.rentflow.core.domain.contract.ContractStatus;
 import com.marco.rentflow.core.domain.common.Money;
@@ -11,6 +12,7 @@ import com.marco.rentflow.infrastructure.utils.DateConverter;
 import org.springframework.stereotype.Component;
 
 import java.time.ZonedDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Component
@@ -29,8 +31,13 @@ public class ContractPersistenceMapper {
         // se agregó esto para asociar el proxy de landlord en propertyProxy y evitar NullPointerException al invocar property.getLandlord().getId() en toDomain
         propertyProxy.setLandlord(landlordProxy);
 
-        UserJpaEntity tenantProxy = new UserJpaEntity();
-        tenantProxy.setId(domain.getTenantId());
+        // El tenant is nulo por diseño: contrato comienza sin tenant
+        // (PENDING_TENANT_SIGNUP). Solo crear proxy when tenantId está present
+        UserJpaEntity tenantProxy = null;
+        if (domain.getTenantId() != null) {
+            tenantProxy = new UserJpaEntity();
+            tenantProxy.setId(domain.getTenantId());
+        }
 
         // se agregó esto para convertir las fechas LocalDateTime de dominio a ZonedDateTime de JPA
         ZonedDateTime createdAt = DateConverter.toZonedDateTime(domain.getCreatedAt());
@@ -40,6 +47,11 @@ public class ContractPersistenceMapper {
                 domain.getId(),
                 propertyProxy,
                 tenantProxy,
+                domain.getTenantEmail(),
+                domain.getTenantFullName(),
+                domain.getTenantRut(),
+                domain.getContractDocumentUrl(),
+                domain.getSource().name(),
                 domain.getStatus().name(),
                 domain.getStartDate(),
                 domain.getEndDate(),
@@ -57,18 +69,29 @@ public class ContractPersistenceMapper {
     public RentalContract toDomain(ContractJpaEntity entity) {
         if (entity == null) return null;
 
+        PropertyJpaEntity property = Objects.requireNonNull(entity.getProperty(),
+                "Property must not be null for ContractJpaEntity " + entity.getId());
+
+        UserJpaEntity landlord = Objects.requireNonNull(entity.getTenant(),
+                "Landlord must not be null for PropertyJpaEntity " + property.getId());
+
+        UUID landlordId = landlord.getId();
+        UUID tenantId = entity.getTenant() != null ? entity.getTenant().getId() : null;
+
         Currency currency = Currency.valueOf(entity.getCurrency());
         Money rentAmount = new Money(entity.getRentAmount(), currency);
         Money depositAmount = new Money(entity.getDepositAmount(), currency);
 
-        // Extraigo el landlordId navegando por la relación de JPA
-        UUID landlordId = entity.getProperty().getLandlord().getId();
-
         return RentalContract.reconstitute(
                 entity.getId(),
-                entity.getProperty().getId(),
-                entity.getTenant().getId(),
+                property.getId(),
                 landlordId,
+                tenantId,
+                entity.getTenantEmail(),
+                entity.getTenantFullName(),
+                entity.getTenantRut(),
+                entity.getContractDocumentUrl(),
+                ContractSource.valueOf(entity.getSource()),
                 rentAmount,
                 depositAmount,
                 entity.getDueDay(),

@@ -60,7 +60,7 @@ CREATE TABLE contracts (
     id UUID PRIMARY KEY,
     property_id UUID NOT NULL REFERENCES properties(id) ON DELETE RESTRICT,
     tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    status VARCHAR(50) NOT NULL,
+    status VARCHAR(50) NOT NULL, -- PENDING_TENANT_SIGNUP | ACTIVE | TERMINATED|EXPIRED
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     due_day INT NOT NULL CHECK (due_day >= 1 AND due_day <= 31),

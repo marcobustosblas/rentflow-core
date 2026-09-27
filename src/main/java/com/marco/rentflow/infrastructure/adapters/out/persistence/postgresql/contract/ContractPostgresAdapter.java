@@ -35,14 +35,14 @@ public class ContractPostgresAdapter implements ContractRepository {
 
     @Override
     public List<RentalContract> findByTenantId(UUID tenantId) {
-        return springDataRepository.findByTenantId(tenantId).stream()
+        return springDataRepository.findByIdWithRelations(tenantId).stream()
                 .map(mapper::toDomain)
                 .toList();
     }
 
     @Override
     public List<RentalContract> findByPropertyLandlordId(UUID landlordId) {
-        return springDataRepository.findByPropertyLandlordId(landlordId).stream()
+        return springDataRepository.findAllByLandlordIdWithRelations(landlordId).stream()
                 .map(mapper::toDomain)
                 .toList();
     }
