@@ -67,7 +67,7 @@ CREATE TABLE contracts (
     rent_amount NUMERIC(19, 4) NOT NULL, -- Agregado
     deposit_amount NUMERIC(19, 4) NOT NULL, -- Agregado
     currency VARCHAR(3) NOT NULL, -- Agregado
-    daily_penalty NUMERIC(19, 4) NOT NULL,
+    daily_penalty NUMERIC(19, 4) NOT NULL, -- es interesante que ponga not null (28-9-26, 15:57 hrs)
     last_readjustment_date DATE, -- Agregado
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP

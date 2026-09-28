@@ -16,8 +16,6 @@ public record FinancialTerms(
         int paymentDueDay,
         BigDecimal dailyPenaltyRate
 ) {
-    public static final BigDecimal DEFAULT_DAILY_PENALTY_RATE = new BigDecimal("0.01");
-
     public FinancialTerms {
         Objects.requireNonNull(monthlyRent, "Monthly rent cannot be null");
         Objects.requireNonNull(depositAmount, "Deposit cannot be null");
@@ -25,7 +23,7 @@ public record FinancialTerms(
 
         if (monthlyRent.getCurrency() != depositAmount.getCurrency()) {
             throw new IllegalArgumentException("Rent and deposit must use the same currency");
-        }
+        } // Validar que se calcule 2 meses de arriendo (mes + mes garantía)
         if (depositAmount.isGreaterThan(monthlyRent.multiply(BigDecimal.valueOf(2)))) {
             throw new IllegalArgumentException("Deposit cannot exceed 2 months of rent");
         }
@@ -38,12 +36,13 @@ public record FinancialTerms(
     }
 
     /**
-     * Convenience factory for creating FinancialTerms with the default penalty rate.
+     * Convenience factory for contracts without late-payment penalty.
+     * Equivalent to constructing with BigDecimal.ZERO.
      */
-    public static FinancialTerms of(Money monthlyRent,
-                                    Money depositAmount,
-                                    int paymentDueDay) {
-        return new FinancialTerms(monthlyRent, depositAmount, paymentDueDay,
-                DEFAULT_DAILY_PENALTY_RATE);
+    public static FinancialTerms withoutPenalty(
+            Money monthlyRent,
+            Money depositAmount,
+            int paymentDueDay) {
+        return new FinancialTerms(monthlyRent, depositAmount, paymentDueDay, BigDecimal.ZERO);
     }
 }
