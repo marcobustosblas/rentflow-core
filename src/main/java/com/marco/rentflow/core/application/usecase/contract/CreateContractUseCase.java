@@ -69,7 +69,7 @@ public class CreateContractUseCase {
         RentalContract contract = RentalContract.create(
                 propertyId, tenantId, landlordId,
                 rentMoney, depositMoney,
-                paymentDueDay, dailyPenaltyRate != null ? dailyPenaltyRate : RentalContract.DEFAULT_DAILY_PENALTY_RATE,
+                paymentDueDay, dailyPenaltyRate != null ? dailyPenaltyRate : new BigDecimal("0.00"),
                 startDate, endDate
         );
 
