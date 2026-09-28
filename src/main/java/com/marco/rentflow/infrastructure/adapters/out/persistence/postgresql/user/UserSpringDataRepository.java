@@ -10,4 +10,5 @@ import java.util.UUID;
 public interface UserSpringDataRepository extends JpaRepository<UserJpaEntity, UUID> {
     Optional<UserJpaEntity> findByEmail(String email);
     boolean existsByEmail(String email);
+    boolean existsByRut(String rut);
 }

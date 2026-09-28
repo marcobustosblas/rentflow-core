@@ -1,6 +1,7 @@
 package com.marco.rentflow.core.domain.contract;
 
 import com.marco.rentflow.core.domain.common.Money;
+import com.marco.rentflow.core.domain.contract.exception.InvalidContractStateException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -14,8 +15,14 @@ import java.util.UUID;
 public class RentalContract {
     private final UUID id;
     private final UUID propertyId;
-    private final UUID tenantId;
     private final UUID landlordId;
+
+    private UUID tenantId;
+    private final String tenantEmail;
+    private final String tenantFullName;
+    private final String tenantRut;
+    private final String contractDocumentUrl;
+    private final ContractSource source;
 
     private Money monthlyRent; // Ingreso mensual recurrente
     private Money depositAmount; // Mes de Garantía (pago único inicial)
@@ -31,16 +38,35 @@ public class RentalContract {
 
 
     // 1. CONSTRUCTOR PRIVADO (El Guardián Absoluto)
-    private RentalContract(UUID id, UUID propertyId, UUID tenantId, UUID landlordId,
-                           Money monthlyRent, Money depositAmount, int paymentDueDay,
-                           BigDecimal dailyPenaltyRate, LocalDate startDate, LocalDate endDate,
-                           ContractStatus status, LocalDateTime createdAt, LocalDateTime updatedAt,
+    private RentalContract(UUID id,
+                           UUID propertyId,
+                           UUID landlordId,
+                           UUID tenantId,
+                           String tenantEmail,
+                           String tenantFullName,
+                           String tenantRut,
+                           String contractDocumentUrl,
+                           ContractSource source,
+                           Money monthlyRent,
+                           Money depositAmount,
+                           int paymentDueDay,
+                           BigDecimal dailyPenaltyRate,
+                           LocalDate startDate,
+                           LocalDate endDate,
+                           ContractStatus status,
+                           LocalDateTime createdAt,
+                           LocalDateTime updatedAt,
                            LocalDate lastReadjustmentDate) {
 
         this.id = Objects.requireNonNull(id, "Contract ID cannot be null");
         this.propertyId = Objects.requireNonNull(propertyId, "Property ID cannot be null");
-        this.tenantId = Objects.requireNonNull(tenantId, "Tenant ID cannot be null");
         this.landlordId = Objects.requireNonNull(landlordId, "Landlord ID cannot be null");
+        this.tenantId = tenantId; // nullable until tenant accepts
+        this.tenantEmail = Objects.requireNonNull(tenantEmail, "Tenant email cannot be null");
+        this.tenantFullName = Objects.requireNonNull(tenantFullName, "Tenant full name cannot be null");
+        this.tenantRut = Objects.requireNonNull(tenantRut, "Tenant RUT cannot be null");
+        this.contractDocumentUrl = contractDocumentUrl; // Puede ser null si es MANUAL
+        this.source = Objects.requireNonNull(source, "Contract source cannot be null");
         this.monthlyRent = Objects.requireNonNull(monthlyRent, "Monthly rent cannot be null");
         this.depositAmount = Objects.requireNonNull(depositAmount, "Deposit amount cannot be null");
 
@@ -62,47 +88,105 @@ public class RentalContract {
         this.lastReadjustmentDate = lastReadjustmentDate;
     }
 
-    // 2. FACTORY METHOD PARA NUEVOS (Capa de Aplicación)
-    public static RentalContract create(UUID propertyId, UUID tenantId, UUID landlordId,
-                                        Money monthlyRent, Money depositAmount,
-                                        int paymentDueDay, BigDecimal dailyPenaltyRate,
-                                        LocalDate startDate, LocalDate endDate) {
+    // 2. FACTORY: register a new contract from an already-signed legal document
+    public static RentalContract create(UUID propertyId, UUID landlordId,
+                                        TenantInfo tenant,
+                                        FinancialTerms terms,
+                                        LocalDate startDate,
+                                        LocalDate endDate,
+                                        String contractDocumentUrl,
+                                        ContractSource source) {
+
+        Objects.requireNonNull(tenant, "TenantInfo cannot be null");
+        Objects.requireNonNull(terms, "FinancialTerms cannot be null");
+
+        // Initial status depends on whether the tenant is already registered
+        ContractStatus initialStatus = tenant.hasRegisteredTenant()
+                ? ContractStatus.ACTIVE
+                : ContractStatus.PENDING_TENANT_SIGNUP;
 
         return new RentalContract(
-                UUID.randomUUID(), propertyId, tenantId, landlordId,
-                monthlyRent, depositAmount, paymentDueDay, dailyPenaltyRate,
-                startDate, endDate, ContractStatus.ACTIVE,
-                LocalDateTime.now(), LocalDateTime.now(), null
+                UUID.randomUUID(),
+                propertyId,
+                landlordId,
+                tenant.tenantId(),
+                tenant.tenantEmail(),
+                tenant.tenantFullName(),
+                tenant.tenantRut(),
+                contractDocumentUrl,
+                source,
+                terms.monthlyRent(),
+                terms.depositAmount(),
+                terms.paymentDueDay(),
+                terms.dailyPenaltyRate(),
+                startDate, endDate,
+                initialStatus,
+                LocalDateTime.now(),
+                LocalDateTime.now(),
+                null
         );
     }
 
-    public static final BigDecimal DEFAULT_DAILY_PENALTY_RATE = new BigDecimal("0.01");
+    // FACTORY: reconstitute from persistence, PARA MAPEO DE BD
+    // MUST only be called by the persistence adapter (Capa de Infraestructura).
 
-    public static RentalContract create(UUID propertyId, UUID tenantId, UUID landlordId,
-                                        Money monthlyRent, Money depositAmount,
-                                        int paymentDueDay,
-                                        LocalDate startDate, LocalDate endDate) {
-
-        return create(propertyId, tenantId, landlordId, monthlyRent, depositAmount, paymentDueDay, DEFAULT_DAILY_PENALTY_RATE, startDate, endDate);
-    }
-
-    // 3. FACTORY METHOD PARA MAPEO DE BD (Capa de Infraestructura)
-    public static RentalContract reconstitute(UUID id, UUID propertyId, UUID tenantId, UUID landlordId,
-                                              Money monthlyRent, Money depositAmount, int paymentDueDay,
-                                              BigDecimal dailyPenaltyRate, LocalDate startDate, LocalDate endDate,
-                                              ContractStatus status, LocalDateTime createdAt, LocalDateTime updatedAt,
+    public static RentalContract reconstitute(UUID id,
+                                              UUID propertyId,
+                                              UUID landlordId,
+                                              UUID tenantId,
+                                              String tenantEmail,
+                                              String tenantFullName,
+                                              String tenantRut,
+                                              String contractDocumentUrl,
+                                              ContractSource source,
+                                              Money monthlyRent,
+                                              Money depositAmount,
+                                              int paymentDueDay,
+                                              BigDecimal dailyPenaltyRate,
+                                              LocalDate startDate,
+                                              LocalDate endDate,
+                                              ContractStatus status,
+                                              LocalDateTime createdAt,
+                                              LocalDateTime updatedAt,
                                               LocalDate lastReadjustmentDate) {
 
         return new RentalContract(
-                id, propertyId, tenantId, landlordId,
-                monthlyRent, depositAmount, paymentDueDay, dailyPenaltyRate,
-                startDate, endDate, status,
-                createdAt, updatedAt, lastReadjustmentDate
+                id, propertyId, landlordId, tenantId, tenantEmail, tenantFullName,
+                tenantRut, contractDocumentUrl, source, monthlyRent,
+                depositAmount, paymentDueDay, dailyPenaltyRate, startDate, endDate,
+                status, createdAt, updatedAt, lastReadjustmentDate
         );
     }
 
+    /** Tenant assignment
+     * Comportamiento que usaré cuando el inquilino haga click en el correo
+     * y se registre en la plataforma.
+     */
+    public void assignTenant(UUID newTenantId) {
+        Objects.requireNonNull(newTenantId, "Tenant ID cannot be null");
 
-    // LÓGICA FINANCIERA Y CÁLCULOS
+        if (this.status != ContractStatus.PENDING_TENANT_SIGNUP) {
+            throw new InvalidContractStateException(
+                    "Cannot assign tenant. Contract is in status " + this.status);
+        }
+        if (this.tenantId != null) {
+            throw new InvalidContractStateException("Contract already has an assigned tenant.");
+        }
+
+        this.tenantId = newTenantId;
+        this.status = ContractStatus.ACTIVE;
+        touch();
+    }
+
+    public boolean hasTenantAssigned() {
+        return this.tenantId != null;
+    }
+
+    public boolean isPendingTenantSignup() {
+        return this.status == ContractStatus.PENDING_TENANT_SIGNUP;
+    }
+
+    // FINANCIAL calculations
 
     public LocalDate calculatePaymentDueDate(int year, int month) {
         YearMonth yearMonth = YearMonth.of(year, month);
@@ -158,15 +242,44 @@ public class RentalContract {
 
     public void extendContract(LocalDate newEndDate) {
         Objects.requireNonNull(newEndDate, "New end date cannot be null");
+
+        if (this.status == ContractStatus.TERMINATED) {
+            throw new InvalidContractStateException("Cannot extend a terminated contract.");
+        }
+        if (this.status == ContractStatus.EXPIRED) {
+            throw new InvalidContractStateException(
+                    "Cannot extend an expired contract. Create a new one.");
+        }
         if (newEndDate.isBefore(this.endDate)) {
             throw new IllegalArgumentException("Renewal end date must be after current end date");
         }
         validateRentalPeriodHasMinimumOneMonth(this.startDate, newEndDate);
         this.endDate = newEndDate;
-        if (this.status == ContractStatus.EXPIRED) {
-            this.status = ContractStatus.ACTIVE;
-        }
         touch();
+    }
+
+    public void terminate() {
+        if (this.status == ContractStatus.TERMINATED || this.status == ContractStatus.EXPIRED) {
+            throw new InvalidContractStateException("Contract is already finished.");
+        }
+        this.status = ContractStatus.TERMINATED;
+        touch();
+    }
+
+    public void expire() {
+        if (this.status == ContractStatus.EXPIRED || this.status == ContractStatus.TERMINATED) {
+            throw new InvalidContractStateException("Contract is already finished.");
+        }
+        if (LocalDate.now().isBefore(this.endDate)) {
+            throw new InvalidContractStateException(
+                    "Contract cannot expire before its end date.");
+        }
+        this.status = ContractStatus.EXPIRED;
+        touch();
+    }
+
+    public boolean isActive() {
+        return this.status == ContractStatus.ACTIVE;
     }
 
     /**/
@@ -181,20 +294,6 @@ public class RentalContract {
         return getRemainingMonths() <= monthsThreshold;
     }
     /**/
-
-    public void terminate() {
-        this.status = ContractStatus.TERMINATED;
-        touch();
-    }
-
-    public void expire() {
-        this.status = ContractStatus.EXPIRED;
-        touch();
-    }
-
-    public boolean isActive() {
-        return this.status == ContractStatus.ACTIVE;
-    }
 
 
     // INVARIANTES PRIVADAS DE NEGOCIO
@@ -280,33 +379,76 @@ public class RentalContract {
     }
 
     // GETTERS
+
     public UUID getId() {
         return id;
     }
+
     public UUID getPropertyId() {
         return propertyId;
     }
-    public UUID getTenantId() {
-        return tenantId;
-    }
+
     public UUID getLandlordId() {
         return landlordId;
     }
+
+    public UUID getTenantId() {
+        return tenantId;
+    }
+
+    public String getTenantEmail() {
+        return tenantEmail;
+    }
+
+    public String getTenantFullName() {
+        return tenantFullName;
+    }
+
+    public String getTenantRut() {
+        return tenantRut;
+    }
+
+    public String getContractDocumentUrl() {
+        return contractDocumentUrl;
+    }
+
+    public ContractSource getSource() {
+        return source;
+    }
+
     public Money getMonthlyRent() {
         return monthlyRent;
     }
+
     public Money getDepositAmount() {
         return depositAmount;
     }
+
     public int getPaymentDueDay() {
         return paymentDueDay;
     }
+
     public BigDecimal getDailyPenaltyRate() {
         return dailyPenaltyRate;
     }
-    public LocalDate getStartDate() { return startDate; }
-    public LocalDate getEndDate() { return endDate; }
-    public ContractStatus getStatus() { return status; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public ContractStatus getStatus() {
+        return status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
 }

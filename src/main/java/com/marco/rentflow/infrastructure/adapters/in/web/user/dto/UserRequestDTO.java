@@ -13,7 +13,7 @@ public record UserRequestDTO(
         String email,
 
         @NotBlank(message = "Password is required")
-        String password, // El usuario lo envía plano. En la W9 el Caso de Uso will hash it.
+        String password, // TODO(W9-security): El payload viaja en claro por HTTPS, el UseCase will hash it.
 
         @NotBlank(message = "RUT is required")
         String rut,
@@ -21,6 +21,6 @@ public record UserRequestDTO(
         String phoneNumber, // como es opcional, no le pongo @NotBlank
 
         @NotBlank(message = "Role is required")
-        @Pattern(regexp = "^(TENANT|LANDLORD)$", message = "Role must be TENANT or LANDLORD")
+        @Pattern(regexp = "(?i)^(LANDLORD)$", message = "Public registration is only allowed for LANDLORD accounts")
         String role
 ) {}

@@ -29,7 +29,7 @@ public class UserPostgresAdapterTest extends AbstractIntegrationTest {
                 "Marco Bustos Blas",
                 "18313678-1",
                 "+569 9 6509 0590",
-                Role.ADMIN
+                Role.PLATFORM_ADMIN
         );
         // b. ACT (Acción: Guardarlo en la base de datos real)
         User savedUser = userPostgresAdapter.save(newUser);
@@ -47,8 +47,8 @@ public class UserPostgresAdapterTest extends AbstractIntegrationTest {
         assertThat(retrievedUser.get().getFullName()).isEqualTo("Marco Bustos Blas");
         assertThat(retrievedUser.get().getRut()).isEqualTo("18313678-1");
         assertThat(retrievedUser.get().getPhoneNumber()).isEqualTo("+569 9 6509 0590");
-        // se agrego esto para comparar la colección Set<Role> que retorna getRoles() utilizando contains() en vez de isEqualTo() que fallaba al comparar un Set con un Enum directo
-        assertThat(retrievedUser.get().getRoles()).contains(Role.ADMIN);
+        // se agregó esto para comparar la colección Set<Role> que retorna getRoles() utilizando contains() en vez de isEqualTo() que fallaba al comparar un Set con un Enum directo
+        assertThat(retrievedUser.get().getRoles()).contains(Role.PLATFORM_ADMIN);
 
         // Verifica que las fechas de auditoría migraron de Java a SQL y volvieron correctamente
         assertThat(retrievedUser.get().getCreatedAt()).isNotNull();

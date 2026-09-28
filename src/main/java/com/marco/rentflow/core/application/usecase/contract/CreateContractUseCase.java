@@ -8,7 +8,7 @@ import com.marco.rentflow.core.domain.property.Property;
 import com.marco.rentflow.core.domain.property.exception.PropertyNotFoundException;
 import com.marco.rentflow.core.domain.property.ports.out.PropertyRepository;
 import com.marco.rentflow.core.domain.user.User;
-import com.marco.rentflow.core.domain.user.UserRepository;
+import com.marco.rentflow.core.domain.user.port.out.UserRepository;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -69,7 +69,7 @@ public class CreateContractUseCase {
         RentalContract contract = RentalContract.create(
                 propertyId, tenantId, landlordId,
                 rentMoney, depositMoney,
-                paymentDueDay, dailyPenaltyRate != null ? dailyPenaltyRate : RentalContract.DEFAULT_DAILY_PENALTY_RATE,
+                paymentDueDay, dailyPenaltyRate != null ? dailyPenaltyRate : new BigDecimal("0.00"),
                 startDate, endDate
         );
 

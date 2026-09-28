@@ -8,7 +8,7 @@ import com.marco.rentflow.core.domain.property.Property;
 import com.marco.rentflow.core.domain.property.ports.out.PropertyRepository;
 import com.marco.rentflow.core.domain.user.Role;
 import com.marco.rentflow.core.domain.user.User;
-import com.marco.rentflow.core.domain.user.UserRepository;
+import com.marco.rentflow.core.domain.user.port.out.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

@@ -230,7 +230,7 @@ public class UserTest {
             User user = User.registerNew("marco@rentflow.com", "hash123",
                     "Marco Bustos", "12345678-9", "+56912345678", Role.LANDLORD);
 
-            assertThrows(UnsupportedOperationException.class, () -> user.getRoles().add(Role.ADMIN));
+            assertThrows(UnsupportedOperationException.class, () -> user.getRoles().add(Role.PLATFORM_ADMIN));
         }
 
         @Test
