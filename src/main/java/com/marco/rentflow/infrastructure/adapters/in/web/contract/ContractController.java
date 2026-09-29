@@ -1,6 +1,7 @@
 package com.marco.rentflow.infrastructure.adapters.in.web.contract;
 
 import com.marco.rentflow.core.application.usecase.contract.*;
+import com.marco.rentflow.core.domain.contract.ContractSource;
 import com.marco.rentflow.core.domain.contract.RentalContract;
 import com.marco.rentflow.infrastructure.adapters.in.web.contract.dto.ContractRequestDTO;
 import com.marco.rentflow.infrastructure.adapters.in.web.contract.dto.ContractResponseDTO;
@@ -36,18 +37,26 @@ public class ContractController {
     @PostMapping
     public ResponseEntity<ContractResponseDTO> create(@Valid @RequestBody ContractRequestDTO request) {
 
-        RentalContract contract = createContractUseCase.execute(
+        // TODO(M3-security): replace request.landlordId() with the authenticated
+        // user ID extracted from the JWT via @AuthenticationPrincipal.
+        CreateContractCommand command = new CreateContractCommand(
                 request.propertyId(),
-                request.tenantId(),
                 request.landlordId(),
+                request.tenantEmail(),
+                request.tenantFullName(),
+                request.tenantRut(),
                 request.rentAmount(),
                 request.depositAmount(),
                 request.currency(),
                 request.paymentDueDay(),
                 request.dailyPenaltyRate(),
                 request.startDate(),
-                request.endDate()
+                request.endDate(),
+                request.contractDocumentUrl(),
+                ContractSource.valueOf(request.source().toUpperCase())
         );
+
+        RentalContract contract = createContractUseCase.execute(command);
 
         ContractResponseDTO response = mapper.toDto(contract);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -77,6 +86,8 @@ public class ContractController {
     public ResponseEntity<ContractResponseDTO> terminate(@PathVariable UUID id,
                                                          @RequestParam UUID landlordId) {
         // landlordId viene como RequestParam provisoriamente hasta implementar SecurityContext
+        // TODO(M3-security): replace landlordId request param with the authenticated
+        // user ID extracted from the JWT.
         RentalContract terminatedContract = terminateContractUseCase.execute(id, landlordId);
         return ResponseEntity.ok(mapper.toDto(terminatedContract));
     }
