@@ -7,6 +7,7 @@ import com.marco.rentflow.core.application.usecase.payment.InitiatePaymentChecko
 import com.marco.rentflow.core.application.usecase.property.*;
 import com.marco.rentflow.core.domain.bankaccount.ports.out.BankAccountRepository;
 import com.marco.rentflow.core.domain.contract.ports.out.ContractRepository;
+import com.marco.rentflow.core.domain.contract.ports.out.TenantInvitationRepository;
 import com.marco.rentflow.core.domain.payment.ports.out.PaymentRepository;
 import com.marco.rentflow.core.domain.property.ports.out.PropertyRepository;
 import com.marco.rentflow.core.domain.subscription.ports.out.SubscriptionRepository;
@@ -77,9 +78,9 @@ public class UseCaseConfig {
     public CreateContractUseCase createContractUseCase(
             PropertyRepository propertyRepository,
             ContractRepository contractRepository,
-            UserRepository userRepository) {
+            TenantInvitationRepository tenantInvitationRepository) {
         // Spring automáticamente inyectará el ContractPostgresAdapter aquí
-        return new CreateContractUseCase(propertyRepository, contractRepository, userRepository);
+        return new CreateContractUseCase(propertyRepository, contractRepository, tenantInvitationRepository);
     }
 
     @Bean

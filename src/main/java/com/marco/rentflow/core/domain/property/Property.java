@@ -83,6 +83,11 @@ public class Property {
         touch();
     }
 
+    public void markAsReserved() {
+        this.status = PropertyStatus.RESERVED;
+        touch();
+    }
+
     public void markUnderMaintenance() {
         this.status = PropertyStatus.MAINTENANCE;
         touch();

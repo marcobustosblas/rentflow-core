@@ -40,8 +40,11 @@ public class TenantInvitation {
     }
 
     public static TenantInvitation create(
-            UUID contractId, UUID landlordId, String tenantEmail,
-            String tokenHash, LocalDateTime expiresAt) {
+            UUID contractId,
+            UUID landlordId,
+            String tenantEmail,
+            String tokenHash,
+            LocalDateTime expiresAt) {
         if (expiresAt.isBefore(LocalDateTime.now())) {
             throw new InvalidInvitationException("Expiration date must be in the future.");
         }
