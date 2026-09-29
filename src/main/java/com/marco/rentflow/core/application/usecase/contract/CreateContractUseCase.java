@@ -2,6 +2,7 @@ package com.marco.rentflow.core.application.usecase.contract;
 
 import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.core.domain.common.Money;
+import com.marco.rentflow.core.domain.common.ports.out.TokenHasher;
 import com.marco.rentflow.core.domain.contract.FinancialTerms;
 import com.marco.rentflow.core.domain.contract.RentalContract;
 import com.marco.rentflow.core.domain.contract.TenantInfo;
@@ -31,11 +32,13 @@ public class CreateContractUseCase {
     private final PropertyRepository propertyRepository;
     private final ContractRepository contractRepository;
     private final TenantInvitationRepository tenantInvitationRepository;
+    private final TokenHasher tokenHasher;
 
-    public CreateContractUseCase(PropertyRepository propertyRepository, ContractRepository contractRepository, TenantInvitationRepository tenantInvitationRepository) {
+    public CreateContractUseCase(PropertyRepository propertyRepository, ContractRepository contractRepository, TenantInvitationRepository tenantInvitationRepository, TokenHasher tokenHasher) {
         this.propertyRepository = propertyRepository;
         this.contractRepository = contractRepository;
         this.tenantInvitationRepository = tenantInvitationRepository;
+        this.tokenHasher = tokenHasher;
     }
 
     /* 1 */
@@ -91,9 +94,9 @@ public class CreateContractUseCase {
                 command.source()
         );
 
-        /* 5 - Generar la Invitación segura con SHA-256 */
+        /* 5 - Create the tenant invitation with a hashed token */
         String rawToken = UUID.randomUUID().toString();
-        String tokenHash = sha256(rawToken);
+        String tokenHash = tokenHasher.hash(rawToken);
 
         TenantInvitation invitation= TenantInvitation.create(
                 contract.getId(),

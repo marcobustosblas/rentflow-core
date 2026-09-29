@@ -6,6 +6,7 @@ import com.marco.rentflow.core.application.usecase.contract.*;
 import com.marco.rentflow.core.application.usecase.payment.InitiatePaymentCheckoutUseCase;
 import com.marco.rentflow.core.application.usecase.property.*;
 import com.marco.rentflow.core.domain.bankaccount.ports.out.BankAccountRepository;
+import com.marco.rentflow.core.domain.common.ports.out.TokenHasher;
 import com.marco.rentflow.core.domain.contract.ports.out.ContractRepository;
 import com.marco.rentflow.core.domain.contract.ports.out.TenantInvitationRepository;
 import com.marco.rentflow.core.domain.payment.ports.out.PaymentRepository;
@@ -78,9 +79,10 @@ public class UseCaseConfig {
     public CreateContractUseCase createContractUseCase(
             PropertyRepository propertyRepository,
             ContractRepository contractRepository,
-            TenantInvitationRepository tenantInvitationRepository) {
+            TenantInvitationRepository tenantInvitationRepository,
+            TokenHasher tokenHasher) {
         // Spring automáticamente inyectará el ContractPostgresAdapter aquí
-        return new CreateContractUseCase(propertyRepository, contractRepository, tenantInvitationRepository);
+        return new CreateContractUseCase(propertyRepository, contractRepository, tenantInvitationRepository, tokenHasher);
     }
 
     @Bean
