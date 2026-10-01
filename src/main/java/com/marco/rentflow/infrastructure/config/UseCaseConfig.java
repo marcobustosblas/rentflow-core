@@ -107,5 +107,17 @@ public class UseCaseConfig {
         return new TerminateContractUseCase(contractRepository, propertyRepository);
     }
 
+    @Bean
+    public RegisterTenantUseCase registerTenantUseCase(
+            UserRepository userRepository,
+            TenantInvitationRepository invitationRepository,
+            ContractRepository contractRepository,
+            PropertyRepository propertyRepository,
+            TokenHasher tokenHasher) {
+        return new RegisterTenantUseCase(
+                userRepository, invitationRepository,
+                contractRepository, propertyRepository, tokenHasher);
+    }
+
 
 }
