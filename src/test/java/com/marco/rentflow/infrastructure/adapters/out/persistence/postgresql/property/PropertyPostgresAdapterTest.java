@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -31,12 +32,12 @@ public class PropertyPostgresAdapterTest extends AbstractIntegrationTest {
 
     private User createAndPersistLandlord(String email) {
         User landlord = User.registerNew(
+                "Arrendador Propietario",
                 email,
                 "password_hash_123",
-                "Arrendador Propietario",
                 "11111111-1",
                 "+56911112222",
-                Role.LANDLORD
+                Set.of(Role.LANDLORD)
         );
         return userPostgresAdapter.save(landlord);
     }

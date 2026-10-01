@@ -2,18 +2,24 @@ package com.marco.rentflow.core.application.usecase.contract;
 
 import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.core.domain.common.Money;
+import com.marco.rentflow.core.domain.common.ports.out.TokenHasher;
+import com.marco.rentflow.core.domain.contract.ContractSource;
+import com.marco.rentflow.core.domain.contract.ContractStatus;
 import com.marco.rentflow.core.domain.contract.RentalContract;
+import com.marco.rentflow.core.domain.contract.TenantInvitation;
 import com.marco.rentflow.core.domain.contract.ports.out.ContractRepository;
+import com.marco.rentflow.core.domain.contract.ports.out.TenantInvitationRepository;
 import com.marco.rentflow.core.domain.property.Property;
+import com.marco.rentflow.core.domain.property.PropertyStatus;
+import com.marco.rentflow.core.domain.property.exception.PropertyNotAvailableException;
+import com.marco.rentflow.core.domain.property.exception.PropertyNotFoundException;
 import com.marco.rentflow.core.domain.property.ports.out.PropertyRepository;
-import com.marco.rentflow.core.domain.user.Role;
-import com.marco.rentflow.core.domain.user.User;
-import com.marco.rentflow.core.domain.user.port.out.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,27 +31,25 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("CreateContractUseCase - Pruebas de Orquestación y Seguridad IDOR")
-public class CreateContractUseCaseTest {
+@DisplayName("CreateContractUseCase - Orchestration and Security")
+class CreateContractUseCaseTest {
 
-    @Mock
-    private PropertyRepository propertyRepository;
+    @Mock private PropertyRepository propertyRepository;
+    @Mock private ContractRepository contractRepository;
+    @Mock private TenantInvitationRepository tenantInvitationRepository;
+    @Mock private TokenHasher tokenHasher;
 
-    @Mock
-    private ContractRepository contractRepository;
-
-    @Mock
-    private UserRepository userRepository;
-
-    @InjectMocks
-    private CreateContractUseCase useCase;
+    @InjectMocks private CreateContractUseCase useCase;
 
     private UUID propertyId;
-    private UUID tenantId;
     private UUID landlordId;
+    private String tenantEmail;
+    private String tenantFullName;
+    private String tenantRut;
     private Money rent;
     private Money deposit;
     private LocalDate startDate;
@@ -54,130 +58,134 @@ public class CreateContractUseCaseTest {
     @BeforeEach
     void setUp() {
         propertyId = UUID.randomUUID();
-        tenantId = UUID.randomUUID();
         landlordId = UUID.randomUUID();
+        tenantEmail = "juan@rentflow.cl";
+        tenantFullName = "Juan Inquilino";
+        tenantRut = "12345678-9";
         rent = new Money(new BigDecimal("500000"), Currency.CLP);
         deposit = new Money(new BigDecimal("500000"), Currency.CLP);
-        startDate = LocalDate.now();
+        startDate = LocalDate.now().plusDays(1);
         endDate = startDate.plusYears(1);
+
+        lenient().when(tokenHasher.hash(anyString())).thenReturn("hashed-token");
+    }
+
+    private CreateContractCommand buildCommand(UUID landlord, String email,
+                                               String fullName, String rut) {
+        return new CreateContractCommand(
+                propertyId,
+                landlord,
+                email,
+                fullName,
+                rut,
+                rent.getAmount(),
+                deposit.getAmount(),
+                rent.getCurrency().name(),
+                5,
+                null,
+                startDate,
+                endDate,
+                null,
+                ContractSource.MANUAL
+        );
+    }
+
+    private Property availableProperty(UUID ownerId) {
+        return Property.registerNew("Av. Providencia 123", rent, ownerId);
     }
 
     @Nested
-    @DisplayName("1. Seguridad y Controles de Acceso (IDOR y Roles)")
-    class SecurityAndAuthorizationTests {
+    @DisplayName("1. Security and IDOR protection")
+    class SecurityTests {
 
         @Test
-        @DisplayName("Debe rechazar la creación si la propiedad pertenece a otro landlord (Protección IDOR)")
-        void shouldThrowExceptionWhenLandlordMismatch() {
-            UUID rogueLandlordId = UUID.randomUUID();
-            Property property = Property.registerNew("Av. Providencia 123", rent, landlordId);
+        @DisplayName("Rejects creation when the property belongs to another landlord")
+        void shouldThrow_whenLandlordMismatch() {
+            UUID rogue = UUID.randomUUID();
+            Property property = availableProperty(landlordId);
 
             when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(property));
 
-            IllegalStateException exception = assertThrows(
+            CreateContractCommand command = buildCommand(rogue, tenantEmail, tenantFullName, tenantRut);
+
+            IllegalStateException ex = assertThrows(
                     IllegalStateException.class,
-                    () -> useCase.execute(propertyId, tenantId, rogueLandlordId, rent, deposit, 5, null, startDate, endDate)
-            );
+                    () -> useCase.execute(command));
 
-            assertEquals("The property does not belong to the provided landlord", exception.getMessage());
+            assertEquals("The property does not belong to the provided landlord", ex.getMessage());
             verify(contractRepository, never()).save(any());
-        }
-
-        @Test
-        @DisplayName("Debe rechazar la creación si el usuario indicado no posee el rol de TENANT")
-        void shouldThrowExceptionWhenUserIsNotTenant() {
-            Property property = Property.registerNew("Av. Providencia 123", rent, landlordId);
-            User nonTenantUser = User.registerNew("pedro@rentflow.cl", "hash123", "Pedro Landlord", "12345678-9", "+56911112222", Role.LANDLORD);
-
-            when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(property));
-            when(userRepository.findById(tenantId)).thenReturn(Optional.of(nonTenantUser));
-
-            IllegalStateException exception = assertThrows(
-                    IllegalStateException.class,
-                    () -> useCase.execute(propertyId, tenantId, landlordId, rent, deposit, 5, null, startDate, endDate)
-            );
-
-            assertEquals("User does not have TENANT privileges", exception.getMessage());
-            verify(contractRepository, never()).save(any());
+            verify(tenantInvitationRepository, never()).save(any());
         }
     }
 
     @Nested
-    @DisplayName("2. Validación de Estado y Existencia de Entidades")
+    @DisplayName("2. Entity validation")
     class EntityValidationTests {
 
         @Test
-        @DisplayName("Debe lanzar excepción si la propiedad no existe en el sistema")
-        void shouldThrowExceptionWhenPropertyNotFound() {
+        @DisplayName("Throws when property does not exist")
+        void shouldThrow_whenPropertyNotFound() {
             when(propertyRepository.findById(propertyId)).thenReturn(Optional.empty());
 
-            IllegalArgumentException exception = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> useCase.execute(propertyId, tenantId, landlordId, rent, deposit, 5, null, startDate, endDate)
-            );
+            CreateContractCommand command = buildCommand(landlordId, tenantEmail, tenantFullName, tenantRut);
 
-            assertEquals("Property not found", exception.getMessage());
+            assertThrows(PropertyNotFoundException.class, () -> useCase.execute(command));
         }
 
         @Test
-        @DisplayName("Debe lanzar excepción si la propiedad ya no está disponible para arriendo")
-        void shouldThrowExceptionWhenPropertyNotAvailable() {
-            Property property = Property.registerNew("Av. Providencia 123", rent, landlordId);
-            property.markAsRented(); // Ya está arrendada
+        @DisplayName("Throws when property is not available")
+        void shouldThrow_whenPropertyNotAvailable() {
+            Property property = availableProperty(landlordId);
+            property.markAsRented();
 
             when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(property));
 
-            IllegalStateException exception = assertThrows(
-                    IllegalStateException.class,
-                    () -> useCase.execute(propertyId, tenantId, landlordId, rent, deposit, 5, null, startDate, endDate)
-            );
+            CreateContractCommand command = buildCommand(landlordId, tenantEmail, tenantFullName, tenantRut);
 
-            assertEquals("Property is not available for rent", exception.getMessage());
-        }
-
-        @Test
-        @DisplayName("Debe lanzar excepción si el tenant no existe en la base de datos")
-        void shouldThrowExceptionWhenTenantNotFound() {
-            Property property = Property.registerNew("Av. Providencia 123", rent, landlordId);
-
-            when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(property));
-            when(userRepository.findById(tenantId)).thenReturn(Optional.empty());
-
-            IllegalArgumentException exception = assertThrows(
-                    IllegalArgumentException.class,
-                    () -> useCase.execute(propertyId, tenantId, landlordId, rent, deposit, 5, null, startDate, endDate)
-            );
-
-            assertEquals("Tenant not found", exception.getMessage());
+            assertThrows(PropertyNotAvailableException.class, () -> useCase.execute(command));
         }
     }
 
     @Nested
-    @DisplayName("3. Flujo Exitoso y Transiciones de Estado")
+    @DisplayName("3. Success flow")
     class SuccessFlowTests {
 
         @Test
-        @DisplayName("Debe crear el contrato, marcar propiedad como RENTED y persisitir ambas entidades")
+        @DisplayName("Creates contract, invitation, reserves property and persists all")
         void shouldCreateContractSuccessfully() {
-            Property property = Property.registerNew("Av. Providencia 123", rent, landlordId);
-            User tenantUser = User.registerNew("juan@rentflow.cl", "hash123", "Juan Inquilino", "12345678-9", "+56911112222", Role.TENANT);
+            Property property = availableProperty(landlordId);
 
             when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(property));
-            when(userRepository.findById(tenantId)).thenReturn(Optional.of(tenantUser));
-            when(contractRepository.save(any(RentalContract.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(contractRepository.save(any(RentalContract.class)))
+                    .thenAnswer(inv -> inv.getArgument(0));
+            when(tenantInvitationRepository.save(any(TenantInvitation.class)))
+                    .thenAnswer(inv -> inv.getArgument(0));
 
-            RentalContract contract = useCase.execute(
-                    propertyId, tenantId, landlordId, rent, deposit, 5, new BigDecimal("0.01"), startDate, endDate
-            );
+            CreateContractCommand command = buildCommand(landlordId, tenantEmail, tenantFullName, tenantRut);
+
+            RentalContract contract = useCase.execute(command);
 
             assertNotNull(contract);
             assertEquals(propertyId, contract.getPropertyId());
-            assertEquals(tenantId, contract.getTenantId());
             assertEquals(landlordId, contract.getLandlordId());
+            assertEquals(tenantEmail, contract.getTenantEmail());
+            assertEquals(ContractStatus.PENDING_TENANT_SIGNUP, contract.getStatus());
+            assertNull(contract.getTenantId(), "Tenant not assigned yet");
 
-            assertFalse(property.isAvailable(), "La propiedad debe pasar a estado RENTED");
-            verify(propertyRepository, times(1)).save(property);
-            verify(contractRepository, times(1)).save(any(RentalContract.class));
+            assertEquals(PropertyStatus.RESERVED, property.getStatus());
+
+            ArgumentCaptor<TenantInvitation> invitationCaptor =
+                    ArgumentCaptor.forClass(TenantInvitation.class);
+            verify(tenantInvitationRepository).save(invitationCaptor.capture());
+
+            TenantInvitation saved = invitationCaptor.getValue();
+            assertEquals(contract.getId(), saved.getContractId());
+            assertEquals(landlordId, saved.getLandlordId());
+            assertEquals(tenantEmail, saved.getTenantEmail());
+            assertEquals("hashed-token", saved.getTokenHash());
+
+            verify(propertyRepository).save(property);
+            verify(contractRepository).save(any(RentalContract.class));
         }
     }
 }

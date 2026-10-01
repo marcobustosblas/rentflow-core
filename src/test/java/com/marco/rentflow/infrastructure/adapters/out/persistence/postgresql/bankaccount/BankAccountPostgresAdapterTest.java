@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,12 +29,12 @@ public class BankAccountPostgresAdapterTest extends AbstractIntegrationTest {
 
     private User createAndPersistUser(String email) {
         User user = User.registerNew(
+                "Titular Cuenta",
                 email,
                 "password_hash_123",
-                "Titular Cuenta",
                 "12345678-5",
                 "+56912345678",
-                Role.LANDLORD
+                Set.of(Role.LANDLORD)
         );
         return userPostgresAdapter.save(user);
     }
