@@ -119,5 +119,15 @@ public class UseCaseConfig {
                 contractRepository, propertyRepository, tokenHasher);
     }
 
+    @Bean
+    public GetInvitationUseCase getInvitationUseCase (
+            TenantInvitationRepository tenantInvitationRepository,
+            ContractRepository contractRepository,
+            PropertyRepository propertyRepository,
+            TokenHasher tokenHasher) {
+        return new GetInvitationUseCase(
+                tenantInvitationRepository, contractRepository, propertyRepository, tokenHasher);
+    }
+
 
 }

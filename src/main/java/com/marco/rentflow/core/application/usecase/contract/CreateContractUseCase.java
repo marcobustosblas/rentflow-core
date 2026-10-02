@@ -94,7 +94,10 @@ public class CreateContractUseCase {
                 command.source()
         );
 
-        /* 5 - Create the tenant invitation with a hashed token */
+        /* 5 - Create the tenant invitation with a hashed token
+        * The raw token is intentionally kept in memory only:
+        * it will be sent by email in C6 (post-commit event). Never persist it.
+        */
         String rawToken = UUID.randomUUID().toString();
         String tokenHash = tokenHasher.hash(rawToken);
 
@@ -109,12 +112,13 @@ public class CreateContractUseCase {
         /* Reserve the property. It becomes RENTED only when the tenant accepts. */
         property.markAsReserved();
 
-        /* 6 - Se persisten todos los agregados */
+        /* 6 - Se persisten todos los agregados para usarlo en el GetInvitationUseCase */
         propertyRepository.save(property);
         RentalContract savedContract = contractRepository.save(contract);
         tenantInvitationRepository.save(invitation);
 
-        /* 7 - TODO(C10/C11): Despachar el correo electrónico post-commit usando el rawToken */
+        /* 7 - TODO(C6): Despachar el correo electrónico post-commit usando el rawToken */
+        /* TODO(C6): publish TenantInvitationCreatedEvent with rawToken to dispatch the email after commit (AFTER_COMMIT listener). */
         // notificationPort.sendTenantInvitationEmail(command.tenantEmail(), rawToken);
 
         /* Retorna el detalle del contrato */
