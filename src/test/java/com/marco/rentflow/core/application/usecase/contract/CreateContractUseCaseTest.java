@@ -2,11 +2,13 @@ package com.marco.rentflow.core.application.usecase.contract;
 
 import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.core.domain.common.Money;
+import com.marco.rentflow.core.domain.common.ports.out.DomainEventPublisher;
 import com.marco.rentflow.core.domain.common.ports.out.TokenHasher;
 import com.marco.rentflow.core.domain.contract.ContractSource;
 import com.marco.rentflow.core.domain.contract.ContractStatus;
 import com.marco.rentflow.core.domain.contract.RentalContract;
 import com.marco.rentflow.core.domain.contract.TenantInvitation;
+import com.marco.rentflow.core.domain.contract.events.TenantInvitationCreatedEvent;
 import com.marco.rentflow.core.domain.contract.ports.out.ContractRepository;
 import com.marco.rentflow.core.domain.contract.ports.out.TenantInvitationRepository;
 import com.marco.rentflow.core.domain.property.Property;
@@ -42,6 +44,7 @@ class CreateContractUseCaseTest {
     @Mock private ContractRepository contractRepository;
     @Mock private TenantInvitationRepository tenantInvitationRepository;
     @Mock private TokenHasher tokenHasher;
+    @Mock private DomainEventPublisher eventPublisher;
 
     @InjectMocks private CreateContractUseCase useCase;
 
@@ -186,6 +189,8 @@ class CreateContractUseCaseTest {
 
             verify(propertyRepository).save(property);
             verify(contractRepository).save(any(RentalContract.class));
+            // se agrega esto por el mock de eventPublisher
+            verify(eventPublisher).publish(any(TenantInvitationCreatedEvent.class));
         }
     }
 }

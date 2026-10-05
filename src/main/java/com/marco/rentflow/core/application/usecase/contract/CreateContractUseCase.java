@@ -2,11 +2,13 @@ package com.marco.rentflow.core.application.usecase.contract;
 
 import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.core.domain.common.Money;
+import com.marco.rentflow.core.domain.common.ports.out.DomainEventPublisher;
 import com.marco.rentflow.core.domain.common.ports.out.TokenHasher;
 import com.marco.rentflow.core.domain.contract.FinancialTerms;
 import com.marco.rentflow.core.domain.contract.RentalContract;
 import com.marco.rentflow.core.domain.contract.TenantInfo;
 import com.marco.rentflow.core.domain.contract.TenantInvitation;
+import com.marco.rentflow.core.domain.contract.events.TenantInvitationCreatedEvent;
 import com.marco.rentflow.core.domain.contract.ports.out.ContractRepository;
 import com.marco.rentflow.core.domain.contract.ports.out.TenantInvitationRepository;
 import com.marco.rentflow.core.domain.property.Property;
@@ -33,12 +35,14 @@ public class CreateContractUseCase {
     private final ContractRepository contractRepository;
     private final TenantInvitationRepository tenantInvitationRepository;
     private final TokenHasher tokenHasher;
+    private final DomainEventPublisher eventPublisher;
 
-    public CreateContractUseCase(PropertyRepository propertyRepository, ContractRepository contractRepository, TenantInvitationRepository tenantInvitationRepository, TokenHasher tokenHasher) {
+    public CreateContractUseCase(PropertyRepository propertyRepository, ContractRepository contractRepository, TenantInvitationRepository tenantInvitationRepository, TokenHasher tokenHasher, DomainEventPublisher eventPublisher) {
         this.propertyRepository = propertyRepository;
         this.contractRepository = contractRepository;
         this.tenantInvitationRepository = tenantInvitationRepository;
         this.tokenHasher = tokenHasher;
+        this.eventPublisher = eventPublisher;
     }
 
     /* 1 */
@@ -109,17 +113,30 @@ public class CreateContractUseCase {
                 LocalDateTime.now().plusDays(INVITATION_TTL_DAYS)
         );
 
-        /* Reserve the property. It becomes RENTED only when the tenant accepts. */
+        /* 6 - Reserve the property. It becomes RENTED only when the tenant accepts. */
         property.markAsReserved();
 
-        /* 6 - Se persisten todos los agregados para usarlo en el GetInvitationUseCase */
+        /* 7 - Se persisten todos los agregados para usarlo en el GetInvitationUseCase */
         propertyRepository.save(property);
         RentalContract savedContract = contractRepository.save(contract);
         tenantInvitationRepository.save(invitation);
 
-        /* 7 - TODO(C6): Despachar el correo electrónico post-commit usando el rawToken */
+        /* TODO(C6): Despachar el correo electrónico post-commit usando el rawToken */
         /* TODO(C6): publish TenantInvitationCreatedEvent with rawToken to dispatch the email after commit (AFTER_COMMIT listener). */
         // notificationPort.sendTenantInvitationEmail(command.tenantEmail(), rawToken);
+
+        /* 8.
+        *  Publish a domain event. The listener runs AFTER_COMMIT,
+        * so the email is only sent if the transaction succeeds.
+        * */
+        eventPublisher.publish(new TenantInvitationCreatedEvent(
+                savedContract.getId(),
+                command.landlordId(),
+                command.tenantEmail(),
+                command.tenantFullName(),
+                rawToken,
+                LocalDateTime.now()
+        ));
 
         /* Retorna el detalle del contrato */
         return savedContract;
