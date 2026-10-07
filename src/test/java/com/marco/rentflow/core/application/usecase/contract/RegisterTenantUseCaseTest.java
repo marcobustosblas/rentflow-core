@@ -71,7 +71,7 @@ public class RegisterTenantUseCaseTest {
         when(propertyRepository.findById(contract.getPropertyId())).thenReturn(Optional.of(property));
 
         RegisterTenantCommand command = new RegisterTenantCommand(
-                RAW_TOKEN, "Juan Pérez", "12345678-9", "+56912345678", "password123");
+                RAW_TOKEN, "Juan Pérez", "12345678-9", "+56912345678", "password123", true);
 
         User result = useCase.execute(command);
 
@@ -94,7 +94,7 @@ public class RegisterTenantUseCaseTest {
         when(invitationRepository.findByTokenHash(TOKEN_HASH)).thenReturn(Optional.empty());
 
         RegisterTenantCommand command = new RegisterTenantCommand(
-                RAW_TOKEN, "Juan Pérez", "12345678-9", null, "password123");
+                RAW_TOKEN, "Juan Pérez", "12345678-9", null, "password123", true);
 
         assertThatThrownBy(() -> useCase.execute(command))
                 .isInstanceOf(InvalidInvitationException.class)
@@ -111,7 +111,7 @@ public class RegisterTenantUseCaseTest {
         when(invitationRepository.findByTokenHash(TOKEN_HASH)).thenReturn(Optional.of(invitation));
 
         RegisterTenantCommand command = new RegisterTenantCommand(
-                RAW_TOKEN, "Juan Pérez", "12345678-9", null, "password123");
+                RAW_TOKEN, "Juan Pérez", "12345678-9", null, "password123", true);
 
         assertThatThrownBy(() -> useCase.execute(command))
                 .isInstanceOf(InvalidInvitationException.class)
@@ -127,9 +127,16 @@ public class RegisterTenantUseCaseTest {
         Property property = availableProperty(contract.getPropertyId());
 
         User existing = User.reconstitute(
-                UUID.randomUUID(), "Juan Pérez", TENANT_EMAIL, "hash", "12345678-9",
-                null, Set.of(Role.TENANT), UserStatus.ACTIVE,
-                LocalDateTime.now(), LocalDateTime.now());
+                UUID.randomUUID(),
+                "Juan Pérez",
+                TENANT_EMAIL,
+                "hash",
+                "12345678-9",
+                null,
+                Set.of(Role.TENANT),
+                UserStatus.ACTIVE,
+                LocalDateTime.now(),
+                LocalDateTime.now());
 
         when(invitationRepository.findByTokenHash(TOKEN_HASH)).thenReturn(Optional.of(invitation));
         when(contractRepository.findById(invitation.getContractId())).thenReturn(Optional.of(contract));
@@ -137,7 +144,7 @@ public class RegisterTenantUseCaseTest {
         when(propertyRepository.findById(contract.getPropertyId())).thenReturn(Optional.of(property));
 
         RegisterTenantCommand command = new RegisterTenantCommand(
-                RAW_TOKEN, "Juan Pérez", "12345678-9", null, "password123");
+                RAW_TOKEN, "Juan Pérez", "12345678-9", null, "password123", true);
 
         User result = useCase.execute(command);
 
@@ -162,7 +169,7 @@ public class RegisterTenantUseCaseTest {
         when(userRepository.existsByRut("12345678-9")).thenReturn(true);
 
         RegisterTenantCommand command = new RegisterTenantCommand(
-                RAW_TOKEN, "Juan Pérez", "12345678-9", null, "password123");
+                RAW_TOKEN, "Juan Pérez", "12345678-9", null, "password123", true);
 
         assertThatThrownBy(() -> useCase.execute(command))
                 .isInstanceOf(ResourceAlreadyExistsException.class)

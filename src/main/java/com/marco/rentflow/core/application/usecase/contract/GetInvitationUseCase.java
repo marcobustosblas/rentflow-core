@@ -50,8 +50,13 @@ public class GetInvitationUseCase {
                 .orElseThrow(() -> new PropertyNotFoundException(contract.getPropertyId()));
 
         // 5. Return only the data the tenant needs to see
+
+        // NOTE: tenantFullName and tenantRut come from the contract for now.
+        // C8 will move them into TenantInvitation so the invitation is self-contained.
         return new InvitationPreviewResponse(
                 invitation.getTenantEmail(),
+                contract.getTenantFullName(),
+                contract.getTenantRut(),
                 property.getAddress(),
                 contract.getMonthlyRent().getAmount(),
                 contract.getMonthlyRent().getCurrency().name(),

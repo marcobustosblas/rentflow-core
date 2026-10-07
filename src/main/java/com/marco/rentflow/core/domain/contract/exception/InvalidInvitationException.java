@@ -1,6 +1,8 @@
 package com.marco.rentflow.core.domain.contract.exception;
 
-public class InvalidInvitationException extends RuntimeException {
+import com.marco.rentflow.core.domain.common.exception.DomainException;
+
+public class InvalidInvitationException extends DomainException {
     public InvalidInvitationException(String message) {
         super(message);
     }

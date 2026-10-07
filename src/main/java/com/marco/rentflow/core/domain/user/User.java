@@ -84,7 +84,7 @@ public class User {
                                     LocalDateTime createdAt,
                                     LocalDateTime updatedAt) {
         Rut existingRut = (rutInput != null) ? new Rut(rutInput) : null;
-        return new User(id, email, passwordHash, fullName, existingRut, phoneNumber, roles, status, createdAt, updatedAt);
+        return new User(id, fullName, email, passwordHash, existingRut, phoneNumber, roles, status, createdAt, updatedAt);
     }
 
     // --- SEMANTIC DOMAIN METHODS ---

@@ -12,9 +12,10 @@ import java.time.LocalDateTime;
  * no tokens, no internal IDs, no landlord private data.
  */
 
-
 public record InvitationPreviewResponse(
         String tenantEmail,
+        String tenantFullName,
+        String tenantRut,
         String propertyAddress,
         BigDecimal monthlyRent,
         String currency,

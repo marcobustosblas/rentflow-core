@@ -37,6 +37,12 @@ public class RegisterTenantUseCase {
 
     public User execute(RegisterTenantCommand command) {
 
+        // 0. Preconditions (cheap, no I/O)
+        // acceptedTerms es una precondición de entrada.
+        if (!command.acceptedTerms()) {
+            throw new IllegalArgumentException("You must accept the contract terms");
+        }
+
         // 1. Localizo la invitación mediante el hash del token sin procesar(raw).
         String tokenHash = tokenHasher.hash(command.rawToken());
         TenantInvitation invitation = invitationRepository.findByTokenHash(tokenHash)
@@ -45,7 +51,8 @@ public class RegisterTenantUseCase {
         // 2. Valido el lifecycle de la invitation
         LocalDateTime now = LocalDateTime.now();
         if (!invitation.canBeAcceptedAt(now)) {
-            if (invitation.isExpired(now) && invitation.isExpired(now)) {
+            // si está expirada Y sigue en estado PENDING, marcar como EXPIRED
+            if (invitation.isExpired(now) && invitation.isPending()) {
                 invitation.markAsExpired();
                 invitationRepository.save(invitation);
             }
