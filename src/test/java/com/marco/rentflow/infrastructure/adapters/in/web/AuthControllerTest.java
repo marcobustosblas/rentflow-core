@@ -149,11 +149,11 @@ public class AuthControllerTest {
     @Test
     void shouldRegisterTenant_whenRequestIsValid() throws Exception {
         TenantRegistrationRequestDTO request = new TenantRegistrationRequestDTO(
-                "abc-123", "Juan Pérez", "12345678-9", "+56912345678",
+                "abc-123", "+56912345678",
                 "password123", true);
 
         RegisterTenantCommand expectedCommand = new RegisterTenantCommand(
-                "abc-123", "Juan Pérez", "12345678-9", "+56912345678", "password123", true);
+                "abc-123", "+56912345678", "password123", true);
 
         User created = User.reconstitute(
                 UUID.randomUUID(),
@@ -177,7 +177,7 @@ public class AuthControllerTest {
                 created.getCreatedAt()
         );
 
-        // Aquí falló el reconstitute del User.
+        // Aquí falló el reconstitute del User, por eso los campos no match, el email daba hash.
 
         when(authRestMapper.toCommand(any(TenantRegistrationRequestDTO.class)))
                 .thenReturn(expectedCommand);

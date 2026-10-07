@@ -55,8 +55,8 @@ public class GetInvitationUseCase {
         // C8 will move them into TenantInvitation so the invitation is self-contained.
         return new InvitationPreviewResponse(
                 invitation.getTenantEmail(),
-                contract.getTenantFullName(),
-                contract.getTenantRut(),
+                invitation.getTenantFullName(),   // ← de la invitación (antes era del contrato)
+                invitation.getTenantRut(),        // ← de la invitación
                 property.getAddress(),
                 contract.getMonthlyRent().getAmount(),
                 contract.getMonthlyRent().getCurrency().name(),

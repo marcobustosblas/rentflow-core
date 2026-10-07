@@ -9,6 +9,8 @@ spring:
     driver-class-name: org.postgresql.Driver
 
   jpa:
+    open-in-view: false
+    # Always false en producción. La sesión debe cerrarse al final del caso de uso, no al final del HTTP request.
     hibernate:
       # ddl-auto=validate ensures Flyway takes charge, while Hibernate verifies entity mapping consistency
       ddl-auto: validate
@@ -16,7 +18,6 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
 
   flyway:
     enabled: true

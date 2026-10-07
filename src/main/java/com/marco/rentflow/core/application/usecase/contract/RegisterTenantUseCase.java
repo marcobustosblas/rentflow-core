@@ -70,8 +70,7 @@ public class RegisterTenantUseCase {
         }
 
         // 4. Resuelvo al tenant (crear uno nuevo o reutilizo el existente)
-        String tenantEmail = invitation.getTenantEmail();
-        User tenant = resolveTenant(command, tenantEmail);
+        User tenant = resolveTenant(command, invitation);
 
         // 5. Assign the tenant to the contract (PENDING_TENANT_SIGNUP → ACTIVE)
         contract.assignTenant(tenant.getId());
@@ -96,7 +95,9 @@ public class RegisterTenantUseCase {
      *       reuse it (do not create a duplicate).
      * Otherwise, create a new user with role TENANT.
      */
-    private User resolveTenant(RegisterTenantCommand command, String tenantEmail) {
+    private User resolveTenant(RegisterTenantCommand command, TenantInvitation invitation) {
+
+        String tenantEmail = invitation.getTenantEmail();
 
         Optional<User> existing = userRepository.findByEmail(tenantEmail);
         if (existing.isPresent()) {
@@ -111,13 +112,20 @@ public class RegisterTenantUseCase {
         }
 
         // First-time registro
-        if (userRepository.existsByRut(command.rut())) {
+        if (userRepository.existsByRut(invitation.getTenantRut())) {
             throw new ResourceAlreadyExistsException(
                     "The RUT is already registered in the system.");
         }
 
         // TODO(C6-security): hash the raw password with a PasswordHasher port before persisting
-        User tenant = User.registerNew(command.fullName(), tenantEmail, command.rawPassword(), command.rut(), command.phoneNumber(), Set.of(Role.TENANT));
+        User tenant = User.registerNew(
+                invitation.getTenantFullName(), // ← de la invitación
+                tenantEmail,
+                command.rawPassword(),
+                invitation.getTenantRut(),      // ← de la invitación
+                command.phoneNumber(),
+                Set.of(Role.TENANT)
+        );
         return userRepository.save(tenant);
     }
 

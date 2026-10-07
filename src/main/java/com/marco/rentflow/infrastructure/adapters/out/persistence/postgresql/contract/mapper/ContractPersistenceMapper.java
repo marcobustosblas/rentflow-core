@@ -18,7 +18,8 @@ import java.util.UUID;
 @Component
 public class ContractPersistenceMapper {
 
-    private ContractPersistenceMapper() {}
+    //private ContractPersistenceMapper() {}
+    // el private ROMPE la instantiation por SPRING
 
     public ContractJpaEntity toJpaEntity(RentalContract domain) {
         if (domain == null) return null;
@@ -72,7 +73,12 @@ public class ContractPersistenceMapper {
         PropertyJpaEntity property = Objects.requireNonNull(entity.getProperty(),
                 "Property must not be null for ContractJpaEntity " + entity.getId());
 
-        UserJpaEntity landlord = Objects.requireNonNull(entity.getTenant(),
+        /*
+        BUG feo: tenia: UserJpaEntity landlord = Objects.requireNonNull(entity.getTenant(),
+        pero landlord que venga del TENANT?!
+         */
+
+        UserJpaEntity landlord = Objects.requireNonNull(property.getLandlord(),
                 "Landlord must not be null for PropertyJpaEntity " + property.getId());
 
         UUID landlordId = landlord.getId();

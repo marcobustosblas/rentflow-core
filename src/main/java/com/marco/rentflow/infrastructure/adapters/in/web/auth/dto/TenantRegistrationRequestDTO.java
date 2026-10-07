@@ -19,12 +19,6 @@ public record TenantRegistrationRequestDTO(
         @NotBlank(message = "El token de invitación es obligatorio")
         String rawToken,
 
-        @NotBlank(message = "Full name is required")
-        String fullName,
-
-        @NotBlank(message = "RUT is required")
-        String rut,
-
         // Optional: tenants may want to provide a phone number for 2FA later.
         String phoneNumber,
 

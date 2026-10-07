@@ -13,9 +13,11 @@ import com.marco.rentflow.core.domain.user.User;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.AbstractIntegrationTest;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.property.PropertyPostgresAdapter;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.user.UserPostgresAdapter;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -26,8 +28,10 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Transactional
 public class ContractPostgresAdapterTest extends AbstractIntegrationTest {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private ContractPostgresAdapter contractPostgresAdapter;
@@ -38,12 +42,21 @@ public class ContractPostgresAdapterTest extends AbstractIntegrationTest {
     @Autowired
     private PropertyPostgresAdapter propertyPostgresAdapter;
 
+    @BeforeEach
+    void cleanDatabase() {
+        jdbcTemplate.execute("TRUNCATE TABLE tenant_invitations CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE contracts CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE properties CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE users CASCADE");
+    }
+
     private User createAndPersistUser(String email, Role role) {
+        String uniqueRut = String.format("%08d-5", Math.abs(email.hashCode()) % 100_000_000);
         User user = User.registerNew(
                 "Usuario Test",
                 email,
                 "password_hash_123",
-                "12345678-5",
+                uniqueRut,
                 "+56912345678",
                 Set.of(role)
         );
@@ -57,7 +70,11 @@ public class ContractPostgresAdapterTest extends AbstractIntegrationTest {
     }
 
     private RentalContract createContract(Property property, User landlord, User tenant, Money rent, Money deposit, int dueDay, LocalDate start, LocalDate end) {
-        TenantInfo tenantInfo = new TenantInfo(tenant.getId(), tenant.getEmail(), tenant.getFullName(), tenant.getRut() != null ? tenant.getRut() : "12345678-5");
+        TenantInfo tenantInfo = new TenantInfo(
+                tenant.getId(),
+                tenant.getEmail(),
+                tenant.getFullName(),
+                tenant.getRut());
         FinancialTerms terms = new FinancialTerms(rent, deposit, dueDay, new BigDecimal("0.01"));
         return RentalContract.register(
                 property.getId(),

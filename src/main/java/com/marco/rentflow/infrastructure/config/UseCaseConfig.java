@@ -5,6 +5,7 @@ import com.marco.rentflow.core.application.port.out.PaymentGatewayPort;
 import com.marco.rentflow.core.application.usecase.contract.*;
 import com.marco.rentflow.core.application.usecase.payment.InitiatePaymentCheckoutUseCase;
 import com.marco.rentflow.core.application.usecase.property.*;
+import com.marco.rentflow.core.application.usecase.user.RegisterUserUseCase;
 import com.marco.rentflow.core.domain.bankaccount.ports.out.BankAccountRepository;
 import com.marco.rentflow.core.domain.common.ports.out.DomainEventPublisher;
 import com.marco.rentflow.core.domain.common.ports.out.TokenHasher;
@@ -131,5 +132,10 @@ public class UseCaseConfig {
                 tenantInvitationRepository, contractRepository, propertyRepository, tokenHasher);
     }
 
+    /* 7-10, 10:43 am User */
+    @Bean
+    public RegisterUserUseCase registerUserUseCase (UserRepository userRepository) {
+        return new RegisterUserUseCase(userRepository);
+    }
 
 }

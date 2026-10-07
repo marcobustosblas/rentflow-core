@@ -15,8 +15,6 @@ public class AuthRestMapper {
     public RegisterTenantCommand toCommand(TenantRegistrationRequestDTO dto) {
         return new RegisterTenantCommand(
                 dto.rawToken(),
-                dto.fullName(),
-                dto.rut(),
                 dto.phoneNumber(),
                 dto.rawPassword(),
                 dto.acceptedTerms()

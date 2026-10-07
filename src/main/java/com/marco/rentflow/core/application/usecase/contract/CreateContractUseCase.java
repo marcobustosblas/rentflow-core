@@ -109,6 +109,8 @@ public class CreateContractUseCase {
                 contract.getId(),
                 command.landlordId(),
                 command.tenantEmail(),
+                command.tenantFullName(),   // ← nuevo
+                command.tenantRut(),        // ← nuevo
                 tokenHash,
                 LocalDateTime.now().plusDays(INVITATION_TTL_DAYS)
         );

@@ -33,6 +33,8 @@ public class GetInvitationUseCaseTest {
 
     private GetInvitationUseCase useCase;
 
+    private static final String NAME_TENANT = "Juan Pérez";
+    private static final String RUT_TENANT = "12345678-9";
     private static final String RAW_TOKEN = "raw-token-123";
     private static final String TOKEN_HASH = "hashed-token-123";
 
@@ -62,6 +64,8 @@ public class GetInvitationUseCaseTest {
                 contractId,
                 UUID.randomUUID(),
                 tenantEmail,
+                NAME_TENANT,
+                RUT_TENANT,
                 TOKEN_HASH,
                 LocalDateTime.now().plusDays(5),
                 InvitationStatus.PENDING,
@@ -109,6 +113,8 @@ public class GetInvitationUseCaseTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "tenant@mail.com",
+                NAME_TENANT,
+                RUT_TENANT,
                 TOKEN_HASH,
                 LocalDateTime.now().minusDays(1), //venció ayer
                 InvitationStatus.PENDING,
@@ -133,6 +139,8 @@ public class GetInvitationUseCaseTest {
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 "tenant@mail.com",
+                NAME_TENANT,
+                RUT_TENANT,
                 TOKEN_HASH,
                 LocalDateTime.now().plusDays(5),
                 InvitationStatus.ACCEPTED,
