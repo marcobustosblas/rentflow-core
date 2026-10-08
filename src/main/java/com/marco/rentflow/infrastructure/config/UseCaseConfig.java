@@ -3,8 +3,11 @@ package com.marco.rentflow.infrastructure.config;
 import com.marco.rentflow.core.application.port.out.NotificationSenderPort;
 import com.marco.rentflow.core.application.port.out.PaymentGatewayPort;
 import com.marco.rentflow.core.application.usecase.contract.*;
+import com.marco.rentflow.core.application.usecase.payment.GetPaymentByIdUseCase;
 import com.marco.rentflow.core.application.usecase.payment.InitiatePaymentCheckoutUseCase;
+import com.marco.rentflow.core.application.usecase.payment.ListPaymentsByContractUseCase;
 import com.marco.rentflow.core.application.usecase.property.*;
+import com.marco.rentflow.core.application.usecase.user.GetUserUseCase;
 import com.marco.rentflow.core.application.usecase.user.RegisterUserUseCase;
 import com.marco.rentflow.core.domain.bankaccount.ports.out.BankAccountRepository;
 import com.marco.rentflow.core.domain.common.ports.out.DomainEventPublisher;
@@ -132,10 +135,27 @@ public class UseCaseConfig {
                 tenantInvitationRepository, contractRepository, propertyRepository, tokenHasher);
     }
 
+    @Bean
+    public GetPaymentByIdUseCase getPaymentByIdUseCase(PaymentRepository paymentRepository) {
+        return new GetPaymentByIdUseCase(paymentRepository);
+    }
+
+    @Bean
+    public ListPaymentsByContractUseCase listPaymentsByContractUseCase(PaymentRepository paymentRepository) {
+        return new ListPaymentsByContractUseCase(paymentRepository);
+    }
+
+    /* USER USE CASES */
+
     /* 7-10, 10:43 am User */
     @Bean
     public RegisterUserUseCase registerUserUseCase (UserRepository userRepository) {
         return new RegisterUserUseCase(userRepository);
+    }
+
+    @Bean
+    public GetUserUseCase getUserUseCase(UserRepository userRepository) {
+        return new GetUserUseCase(userRepository);
     }
 
 }

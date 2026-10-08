@@ -29,10 +29,9 @@ public class PaymentPostgresAdapter implements PaymentRepository {
     }
 
     @Override
-    public Optional<PaymentRecord> findById(String id) {
+    public Optional<PaymentRecord> findById(UUID id) {
         try {
-            UUID uuid = UUID.fromString(id);
-            return springDataRepository.findById(uuid)
+            return springDataRepository.findById(id)
                     .map(PaymentPersistenceMapper::toDomain);
         } catch (IllegalArgumentException e) {
             // Protección contra inyecciones de strings malformados en el ID
