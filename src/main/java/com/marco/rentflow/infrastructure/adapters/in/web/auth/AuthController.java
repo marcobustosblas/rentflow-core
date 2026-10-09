@@ -42,6 +42,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    // TODO(M5-security): @PreAuthorize("isAnonymous()")
     public ResponseEntity<UserResponseDTO> registerLandlord(@Valid @RequestBody UserRequestDTO request) {
 
         /* Zero-Trust: Intercepto cualquier intento de inyectar roles privilegiados o de inquilino */
@@ -75,6 +76,7 @@ public class AuthController {
      * to override these values during registration.
      */
     @GetMapping("/invitations/{token}")
+    // TODO(M5-security): @PreAuthorize("isAnonymous()")
     public ResponseEntity<InvitationPreviewDTO> previewInvitation(@PathVariable("token") String rawToken) {
         InvitationPreviewResponse response = getInvitationUseCase.execute(rawToken);
         return ResponseEntity.ok(authRestMapper.toPreviewDto(response));
@@ -89,6 +91,7 @@ public class AuthController {
      * from the request body.
      */
     @PostMapping("/register/tenant")
+    // TODO(M5-security): @PreAuthorize("isAnonymous()")
     public ResponseEntity<UserResponseDTO> registerTenant(@Valid @RequestBody TenantRegistrationRequestDTO request) {
         RegisterTenantCommand command = authRestMapper.toCommand(request);
         User tenant = registerTenantUseCase.execute(command);

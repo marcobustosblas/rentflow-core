@@ -43,6 +43,7 @@ public class PaymentController {
     }
 
     @PostMapping("/checkout")
+    // TODO(M5-security): @PreAuthorize("hasRole('TENANT')")
     public ResponseEntity<PaymentCheckoutResponseDTO> initiateCheckout(@Valid @RequestBody PaymentCheckoutRequestDTO request) {
         InitiatePaymentCheckoutUseCase.CheckoutResult result = checkoutUseCase.execute(
                 request.userId(),
@@ -56,6 +57,8 @@ public class PaymentController {
     }
 
     @PostMapping("/webhook")
+    // TODO(M5-security): @PreAuthorize("isAnonymous()") // webhook público, firmado por el proveedor
+    // TODO(M5-security): verify webhook signature from the payment provider
     public ResponseEntity<Void> handleWebhook(@Valid @RequestBody PaymentWebhookRequestDTO request) {
         Currency currency = Currency.valueOf(request.currency());
         Money amountPaid = new Money(request.amountPaid(), currency);
@@ -79,6 +82,7 @@ public class PaymentController {
     }
 
     @GetMapping("/contract/{contractId}")
+    // TODO(M5-security): @PreAuthorize("hasRole('LANDLORD') or hasRole('TENANT')")
     public ResponseEntity<List<PaymentResponseDTO>> listByContract(@PathVariable UUID contractId) {
         List<PaymentRecord> payments = listPaymentsByContractUseCase.execute(contractId);
         List<PaymentResponseDTO> responses = paymentRestMapper.toResponseDtoList(payments);
@@ -86,3 +90,10 @@ public class PaymentController {
     }
 
 }
+
+/**
+ * Nota importante sobre /webhook: es un endpoint público pero no anónimo.
+ * Lo llama el gateway de pago (Stripe, Transbank), no un usuario.
+ * Debe validar la firma HMAC que envía el proveedor.
+ * Ese es un TODO de seguridad crítico que en M5 se resolverá
+ */

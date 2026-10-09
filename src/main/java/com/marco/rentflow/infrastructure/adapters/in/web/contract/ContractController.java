@@ -35,9 +35,10 @@ public class ContractController {
     }
 
     @PostMapping
+    // TODO(M5-security): @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<ContractResponseDTO> create(@Valid @RequestBody ContractRequestDTO request) {
 
-        // TODO(M3-security): replace request.landlordId() with the authenticated
+        // TODO(M5-security): replace request.landlordId() with the authenticated
         // user ID extracted from the JWT via @AuthenticationPrincipal.
         CreateContractCommand command = new CreateContractCommand(
                 request.propertyId(),
@@ -63,12 +64,14 @@ public class ContractController {
     }
 
     @GetMapping("/{id}")
+    // TODO(M5-security): @PreAuthorize("hasRole('LANDLORD') or hasRole('TENANT')")
     public ResponseEntity<ContractResponseDTO> getById(@PathVariable UUID id) {
         RentalContract contract = getContractUseCase.execute(id);
         return ResponseEntity.ok(mapper.toDto(contract));
     }
 
     @GetMapping("/landlord/{landlordId}")
+    // TODO(M5-security): @PreAuthorize("hasRole('LANDLORD') and #landlordId == authentication.principal.id")
     public ResponseEntity<List<ContractResponseDTO>> getByLandlord(@PathVariable UUID landlordId) {
         var contracts = listContractsByLandlordUseCase.execute(landlordId);
         var responses = contracts.stream().map(mapper::toDto).toList();
@@ -76,6 +79,7 @@ public class ContractController {
     }
 
     @GetMapping("/tenant/{tenantId}")
+    // TODO(M5-security): @PreAuthorize("hasRole('TENANT') and #tenantId == authentication.principal.id")
     public ResponseEntity<List<ContractResponseDTO>> getByTenant(@PathVariable UUID tenantId) {
         List<RentalContract> contracts = listContractsByTenantUseCase.execute(tenantId);
         List<ContractResponseDTO> responses = contracts.stream().map(mapper::toDto).toList();
@@ -83,10 +87,11 @@ public class ContractController {
     }
 
     @PatchMapping("/{id}/terminate")
+    // TODO(M5-security): @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<ContractResponseDTO> terminate(@PathVariable UUID id,
                                                          @RequestParam UUID landlordId) {
         // landlordId viene como RequestParam provisoriamente hasta implementar SecurityContext
-        // TODO(M3-security): replace landlordId request param with the authenticated
+        // TODO(M5-security): replace landlordId request param with the authenticated
         // user ID extracted from the JWT.
         RentalContract terminatedContract = terminateContractUseCase.execute(id, landlordId);
         return ResponseEntity.ok(mapper.toDto(terminatedContract));
