@@ -2,7 +2,10 @@ package com.marco.rentflow.core.domain.payment;
 
 import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.core.domain.common.Money;
+import com.marco.rentflow.core.domain.contract.ContractSource;
+import com.marco.rentflow.core.domain.contract.FinancialTerms;
 import com.marco.rentflow.core.domain.contract.RentalContract;
+import com.marco.rentflow.core.domain.contract.TenantInfo;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -133,12 +136,13 @@ public class PaymentRecordTest {
                 Money localStandardDeposit = new Money(new BigDecimal("350000"), Currency.CLP);
 
                 // Given: Contrato con arriendo de $350.000
-                RentalContract contract = RentalContract.create(
-                        localPropertyId, localTenantId, localLandlordId,
-                        localStandardRent, localStandardDeposit,
-                        5,
+                TenantInfo localTenant = new TenantInfo(localTenantId, "tenant@test.com", "Tenant Name", "12345678-9");
+                FinancialTerms localTerms = new FinancialTerms(localStandardRent, localStandardDeposit, 5, new BigDecimal("0.01"));
+                RentalContract contract = RentalContract.register(
+                        localPropertyId, localLandlordId, localTenant, localTerms,
                         LocalDate.of(2026, 1, 1),
-                        LocalDate.of(2026, 12, 31)
+                        LocalDate.of(2026, 12, 31),
+                        null, ContractSource.MANUAL
                 );
 
                 // Given: Registro de pago pendiente
@@ -163,7 +167,7 @@ public class PaymentRecordTest {
 
                 // Se asume que getAmountPaid refleja el pago final
                 assertEquals(localStandardRent.getAmount().add(expectedLateFee), payment.getTotalPaid().getAmount());
-                assertEquals(localStandardRent.getAmount(), payment.getTotalExpected().getAmount());
+                assertEquals(localStandardRent.getAmount(), payment.getExpectedAmount().getAmount());
             }
         }
 

@@ -12,6 +12,8 @@ public class TenantInvitation {
     private final UUID contractId;
     private final UUID landlordId;
     private final String tenantEmail;
+    private final String tenantFullName;    // ← nuevo
+    private final String tenantRut;         // ← nuevo
     private final String tokenHash;
     private final LocalDateTime expiresAt;
     private final LocalDateTime createdAt;
@@ -23,6 +25,8 @@ public class TenantInvitation {
                              UUID contractId,
                              UUID landlordId,
                              String tenantEmail,
+                             String tenantFullName,
+                             String tenantRut,
                              String tokenHash,
                              LocalDateTime expiresAt,
                              InvitationStatus status,
@@ -32,6 +36,8 @@ public class TenantInvitation {
         this.contractId = Objects.requireNonNull(contractId);
         this.landlordId = Objects.requireNonNull(landlordId);
         this.tenantEmail = Objects.requireNonNull(tenantEmail);
+        this.tenantFullName = Objects.requireNonNull(tenantFullName);
+        this.tenantRut = Objects.requireNonNull(tenantRut);
         this.tokenHash = Objects.requireNonNull(tokenHash);
         this.expiresAt = Objects.requireNonNull(expiresAt);
         this.status = Objects.requireNonNull(status);
@@ -40,13 +46,28 @@ public class TenantInvitation {
     }
 
     public static TenantInvitation create(
-            UUID contractId, UUID landlordId, String tenantEmail,
-            String tokenHash, LocalDateTime expiresAt) {
+            UUID contractId,
+            UUID landlordId,
+            String tenantEmail,
+            String tenantFullName,
+            String tenantRut,
+            String tokenHash,
+            LocalDateTime expiresAt) {
         if (expiresAt.isBefore(LocalDateTime.now())) {
             throw new InvalidInvitationException("Expiration date must be in the future.");
         }
-        return new TenantInvitation(UUID.randomUUID(), contractId, landlordId, tenantEmail,
-                tokenHash, expiresAt, InvitationStatus.PENDING, LocalDateTime.now(), null
+        return new TenantInvitation(
+                UUID.randomUUID(),
+                contractId,
+                landlordId,
+                tenantEmail,
+                tenantFullName,
+                tenantRut,
+                tokenHash,
+                expiresAt,
+                InvitationStatus.PENDING,
+                LocalDateTime.now(),
+                null
         );
     }
 
@@ -54,13 +75,16 @@ public class TenantInvitation {
                                                 UUID contractId,
                                                 UUID landlordId,
                                                 String tenantEmail,
+                                                String tenantFullName,
+                                                String tenantRut,
                                                 String tokenHash,
                                                 LocalDateTime expiresAt,
                                                 InvitationStatus status,
                                                 LocalDateTime createdAt,
                                                 LocalDateTime acceptedAt) {
         return new TenantInvitation(id, contractId, landlordId, tenantEmail,
-                tokenHash, expiresAt, status, createdAt, acceptedAt);
+                tenantFullName, tenantRut, tokenHash, expiresAt, status,
+                createdAt, acceptedAt);
     }
 
     /**
@@ -127,6 +151,14 @@ public class TenantInvitation {
 
     public String getTenantEmail() {
         return tenantEmail;
+    }
+
+    public String getTenantFullName() {
+        return tenantFullName;
+    }
+
+    public String getTenantRut() {
+        return tenantRut;
     }
 
     public String getTokenHash() {

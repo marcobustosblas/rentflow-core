@@ -45,11 +45,12 @@ public class UserPersistenceMapper {
                 .collect(Collectors.toSet());
 
         // Usar el Factory Method de reconstitución de tu Dominio
+        // Aqui había un error de orden de los atributos.
         return User.reconstitute(
                 entity.getId(),
+                entity.getFullName(),
                 entity.getEmail(),
                 entity.getPasswordHash(),
-                entity.getFullName(),
                 entity.getRut(),
                 entity.getPhoneNumber(),
                 rolesSet,

@@ -25,6 +25,15 @@ public interface ContractSpringDataRepository extends JpaRepository<ContractJpaE
         JOIN FETCH c.property p
         JOIN FETCH p.landlord
         LEFT JOIN FETCH c.tenant
+        WHERE c.tenant.id = :tenantId
+        """)
+    List<ContractJpaEntity> findAllByTenantIdWithRelations(@Param("tenantId") UUID tenantId);
+
+    @Query("""
+        SELECT c FROM ContractJpaEntity c
+        JOIN FETCH c.property p
+        JOIN FETCH p.landlord
+        LEFT JOIN FETCH c.tenant
         WHERE p.landlord.id = :landlordId
         """)
     List<ContractJpaEntity> findAllByLandlordIdWithRelations(@Param("landlordId") UUID landlordId);

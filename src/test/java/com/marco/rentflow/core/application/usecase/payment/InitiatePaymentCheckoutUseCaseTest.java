@@ -3,10 +3,12 @@ package com.marco.rentflow.core.application.usecase.payment;
 import com.marco.rentflow.core.application.port.out.PaymentGatewayPort;
 import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.core.domain.common.Money;
+import com.marco.rentflow.core.domain.contract.ContractSource;
+import com.marco.rentflow.core.domain.contract.FinancialTerms;
 import com.marco.rentflow.core.domain.contract.RentalContract;
+import com.marco.rentflow.core.domain.contract.TenantInfo;
 import com.marco.rentflow.core.domain.contract.ports.out.ContractRepository;
 import com.marco.rentflow.core.domain.payment.PaymentRecord;
-import com.marco.rentflow.core.domain.payment.PaymentStatus;
 import com.marco.rentflow.core.domain.payment.PaymentTarget;
 import com.marco.rentflow.core.domain.payment.ports.out.PaymentRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,10 +68,12 @@ public class InitiatePaymentCheckoutUseCaseTest {
         LocalDate startDate = LocalDate.of(2026, 1, 1);
         LocalDate endDate = LocalDate.of(2026, 12, 31);
 
-        contract = RentalContract.create(
-                propertyId, tenantId, landlordId, rent, deposit, 5, new BigDecimal("0.01"), startDate, endDate
+        TenantInfo tenantInfo = new TenantInfo(tenantId, "tenant@test.com", "Tenant Name", "12345678-9");
+        FinancialTerms terms = new FinancialTerms(rent, deposit, 5, new BigDecimal("0.01"));
+
+        contract = RentalContract.register(
+                propertyId, landlordId, tenantInfo, terms, startDate, endDate, null, ContractSource.MANUAL
         );
-        // Usamos la misma fecha de vencimiento que calcula el contrato (ej. 2026-03-05)
         dueDate = contract.calculatePaymentDueDate(paymentDate.getYear(), paymentDate.getMonthValue());
     }
 
@@ -84,7 +88,7 @@ public class InitiatePaymentCheckoutUseCaseTest {
 
             IllegalArgumentException exception = assertThrows(
                     IllegalArgumentException.class,
-                    () -> useCase.execute(tenantId, contractId, paymentDate)
+                    () -> useCase.execute(tenantId, contractId, "RENT", paymentDate)
             );
 
             assertEquals("Contract not found", exception.getMessage());
@@ -98,7 +102,7 @@ public class InitiatePaymentCheckoutUseCaseTest {
 
             IllegalStateException exception = assertThrows(
                     IllegalStateException.class,
-                    () -> useCase.execute(rogueTenantId, contractId, paymentDate)
+                    () -> useCase.execute(rogueTenantId, contractId, "RENT", paymentDate)
             );
 
             assertEquals("Unauthorized tenant", exception.getMessage());
@@ -113,7 +117,7 @@ public class InitiatePaymentCheckoutUseCaseTest {
         @DisplayName("Debe reutilizar el cobro PENDING existente sin crear un registro duplicado (Evita doble clic)")
         void shouldReuseExistingPendingPaymentWhenAvailable() {
             // ARRANGE
-            String expectedIdempotencyKey = "PAY-" + contractId + "-2026-03";
+            String expectedIdempotencyKey = "PAY-RENT-" + contractId + "-2026-03";
             Money expectedTotal = new Money(new BigDecimal("500000"), Currency.CLP);
 
             // Simular un pago PENDING existente para el mismo vencimiento
@@ -127,11 +131,11 @@ public class InitiatePaymentCheckoutUseCaseTest {
                     .thenReturn("https://webpay.cl/checkout/session123");
 
             // ACT
-            String checkoutUrl = useCase.execute(tenantId, contractId, paymentDate);
+            InitiatePaymentCheckoutUseCase.CheckoutResult result = useCase.execute(tenantId, contractId, "RENT", paymentDate);
 
             // ASSERT
-            assertEquals("https://webpay.cl/checkout/session123", checkoutUrl);
-            verify(paymentRepository, never()).save(any()); // ¡REGLA CLAVE! No guarda duplicados
+            assertEquals("https://webpay.cl/checkout/session123", result.checkoutResult());
+            verify(paymentRepository, never()).save(any());
             verify(paymentGatewayPort, times(1)).generateCheckoutUrl(eq(expectedIdempotencyKey), any(Money.class));
         }
 
@@ -140,16 +144,17 @@ public class InitiatePaymentCheckoutUseCaseTest {
         void shouldCreateNewPaymentRecordWhenNoPendingExists() {
             // ARRANGE
             when(contractRepository.findById(contractId)).thenReturn(Optional.of(contract));
-            when(paymentRepository.findByContractId(contractId)).thenReturn(List.of()); // Lista vacía
+            when(paymentRepository.findByContractId(contractId)).thenReturn(List.of());
+            when(paymentRepository.save(any(PaymentRecord.class))).thenAnswer(invocation -> invocation.getArgument(0));
             when(paymentGatewayPort.generateCheckoutUrl(anyString(), any(Money.class)))
                     .thenReturn("https://webpay.cl/checkout/new_session");
 
             // ACT
-            String checkoutUrl = useCase.execute(tenantId, contractId, paymentDate);
+            InitiatePaymentCheckoutUseCase.CheckoutResult result = useCase.execute(tenantId, contractId, "RENT", paymentDate);
 
             // ASSERT
-            assertEquals("https://webpay.cl/checkout/new_session", checkoutUrl);
-            verify(paymentRepository, times(1)).save(any(PaymentRecord.class)); // Guarda la nueva intención de pago
+            assertEquals("https://webpay.cl/checkout/new_session", result.checkoutResult());
+            verify(paymentRepository, times(1)).save(any(PaymentRecord.class));
         }
     }
 }

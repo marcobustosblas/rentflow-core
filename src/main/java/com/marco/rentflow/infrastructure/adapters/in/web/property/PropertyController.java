@@ -37,6 +37,7 @@ public class PropertyController {
     }
 
     @PostMapping
+    // TODO(M5-security): @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<PropertyResponseDTO> create(@Valid @RequestBody PropertyRequestDTO request) {
         /*
          * ZERO TRUST: Por ahora, el DTO trae el landlordId.
@@ -59,12 +60,14 @@ public class PropertyController {
     }
 
     @GetMapping("/{id}")
+    // TODO(M5-security): @PreAuthorize("hasRole('LANDLORD') or hasRole('TENANT')")
     public ResponseEntity<PropertyResponseDTO> getById(@PathVariable UUID id) {
         var property = getPropertyUseCase.execute(id);
         return ResponseEntity.ok(mapper.toDto(property));
     }
 
     @PutMapping("/{id}")
+    // TODO(M5-security): @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<PropertyResponseDTO> update(
             @PathVariable UUID id, @Valid @RequestBody PropertyRequestDTO request) {
         var propertyUpdated = updatePropertyUseCase.execute(
@@ -78,6 +81,7 @@ public class PropertyController {
     }
 
     @GetMapping("/landlord/{landlordId}")
+    // TODO(M5-security): @PreAuthorize("hasRole('LANDLORD') and #landlordId == authentication.principal.id")
     public ResponseEntity<List<PropertyResponseDTO>> getByLandLord(@PathVariable UUID landlordId) {
         List<Property> properties = listLandlordPropertiesUseCase.execute(landlordId);
         var response = properties.stream().map(mapper::toDto).toList();
@@ -85,6 +89,7 @@ public class PropertyController {
     }
 
     @GetMapping()
+    // TODO(M5-security): @PreAuthorize("hasRole('LANDLORD') or hasRole('TENANT')")
     public ResponseEntity<List<PropertyResponseDTO>> getByStatus
             (@RequestParam(required = false, defaultValue = "AVAILABLE") String status){
         var properties = listPropertiesByStatusUseCase.execute(status);

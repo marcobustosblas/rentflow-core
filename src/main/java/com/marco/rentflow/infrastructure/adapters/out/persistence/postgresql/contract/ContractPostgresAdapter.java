@@ -20,22 +20,38 @@ public class ContractPostgresAdapter implements ContractRepository {
         this.mapper = mapper;
     }
 
+    /*
+    El problema:
+    1. En ContractPostgresAdapter.save(...), haces repository.save(entity) y luego intentas mapear la entidad guardada de vuelta a dominio con mapper.toDomain(...).
+    2.Pero entity.getProperty() es un proxy lazy que NO tiene sesión activa cuando toDomain intenta acceder a property.getLandlord().getId().
+    3.Resultado: LazyInitializationException.
+     */
+
     @Override
     public RentalContract save(RentalContract contract) {
         ContractJpaEntity entity = mapper.toJpaEntity(contract);
-        ContractJpaEntity savedEntity = springDataRepository.save(entity);
-        return mapper.toDomain(savedEntity);
+        ContractJpaEntity saved = springDataRepository.save(entity);
+        // Re-fetch con relaciones cargadas usando JOIN FETCH
+        ContractJpaEntity hydrated = springDataRepository.findByIdWithRelations(saved.getId())
+                .orElseThrow(() -> new IllegalStateException(
+                        "Contract not found after save: " + saved.getId()));
+        return mapper.toDomain(hydrated);
     }
+
+    /*
+    Ventaja: la query findByIdWithRelations trae property + landlord + tenant
+    en una sola consulta. El mapper no dispara lazy loading.
+     */
 
     @Override
     public Optional<RentalContract> findById(UUID id) {
-        return springDataRepository.findById(id)
+        return springDataRepository.findByIdWithRelations(id)
                 .map(mapper::toDomain);
     }
 
     @Override
     public List<RentalContract> findByTenantId(UUID tenantId) {
-        return springDataRepository.findByIdWithRelations(tenantId).stream()
+        return springDataRepository.findAllByTenantIdWithRelations(tenantId).stream()
                 .map(mapper::toDomain)
                 .toList();
     }

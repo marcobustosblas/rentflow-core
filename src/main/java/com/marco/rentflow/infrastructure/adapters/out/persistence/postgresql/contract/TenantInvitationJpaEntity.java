@@ -21,6 +21,12 @@ public class TenantInvitationJpaEntity {
     @Column(name = "tenant_email", nullable = false, length = 255)
     private String tenantEmail;
 
+    @Column(name = "tenant_full_name", nullable = false, length = 255)
+    private String tenantFullName;
+
+    @Column(name = "tenant_rut", nullable = false, length = 50)
+    private String tenantRut;
+
     @Column(name = "token_hash", nullable = false, unique = true, length = 500)
     private String tokenHash;
 
@@ -46,6 +52,8 @@ public class TenantInvitationJpaEntity {
                                      UUID contractId,
                                      UUID landlordId,
                                      String tenantEmail,
+                                     String tenantFullName,
+                                     String tenantRut,
                                      String tokenHash,
                                      ZonedDateTime expiresAt,
                                      String status,
@@ -55,6 +63,8 @@ public class TenantInvitationJpaEntity {
         this.contractId = contractId;
         this.landlordId = landlordId;
         this.tenantEmail = tenantEmail;
+        this.tenantFullName = tenantFullName;
+        this.tenantRut = tenantRut;
         this.tokenHash = tokenHash;
         this.expiresAt = expiresAt;
         this.status = status;
@@ -75,6 +85,8 @@ public class TenantInvitationJpaEntity {
     public UUID getContractId() { return contractId; }
     public UUID getLandlordId() { return landlordId; }
     public String getTenantEmail() { return tenantEmail; }
+    public String getTenantFullName() { return tenantFullName; }
+    public String getTenantRut() { return tenantRut; }
     public String getTokenHash() { return tokenHash; }
     public ZonedDateTime getExpiresAt() { return expiresAt; }
     public String getStatus() { return status; }
@@ -86,6 +98,8 @@ public class TenantInvitationJpaEntity {
     public void setContractId(UUID contractId) { this.contractId = contractId; }
     public void setLandlordId(UUID landlordId) { this.landlordId = landlordId; }
     public void setTenantEmail(String tenantEmail) { this.tenantEmail = tenantEmail; }
+    public void setTenantFullName(String tenantFullName) { this.tenantFullName = tenantFullName; }
+    public void setTenantRut(String tenantRut) { this.tenantRut = tenantRut; }
     public void setTokenHash(String tokenHash) { this.tokenHash = tokenHash; }
     public void setExpiresAt(ZonedDateTime expiresAt) { this.expiresAt = expiresAt; }
     public void setStatus(String status) { this.status = status; }

@@ -7,15 +7,32 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 public record ContractRequestDTO (
+
         @NotNull(message = "Property ID is required")
         UUID propertyId,
 
+        /*
         @NotNull(message = "Tenant ID is required")
-        UUID tenantId,
+        UUID tenantId, EL TENANT NO EXISTE como usuario
+         */
+        // TODO(M3-security): remove this field once JWT authentication is in place.
+        // The landlord ID will be extracted from the authenticated principal.
         @NotNull(message = "Landlord ID is required")
         UUID landlordId,
 
-        // Datos Financieros
+        // --- Tenant data (from the signed legal contract) ---
+
+        @NotBlank(message = "Tenant email is required")
+        @Email(message = "Tenant email must be a valid email")
+        String tenantEmail,
+
+        @NotBlank(message = "Tenant full name is required")
+        String tenantFullName,
+
+        @NotBlank(message = "Tenant RUT is required")
+        String tenantRut,
+
+        // --- Datos Financieros ---
 
         @NotNull(message = "Rent amount is required")
         @Positive(message = "Rent amount must be greater than zero")
@@ -47,6 +64,16 @@ public record ContractRequestDTO (
 
         @NotNull(message = "End date is required")
         @Future(message = "End date must be a future date")
-        LocalDate endDate
+        LocalDate endDate,
+
+        // --- Optional: source document (MANUAL contracts may not have one) ---
+
+        @Size(max = 2000, message = "Document URL cannot exceed 2000 characters")
+        String contractDocumentUrl,
+
+        @NotBlank(message = "Source is required")
+        @Pattern(regexp = "^(MANUAL|AI_EXTRACTED)$",
+                message = "Source must be MANUAL or AI_EXTRACTED")
+        String source
 ) {}
 

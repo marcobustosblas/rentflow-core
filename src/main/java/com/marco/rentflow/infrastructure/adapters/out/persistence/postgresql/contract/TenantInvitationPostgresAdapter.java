@@ -3,9 +3,11 @@ package com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.co
 import com.marco.rentflow.core.domain.contract.TenantInvitation;
 import com.marco.rentflow.core.domain.contract.ports.out.TenantInvitationRepository;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.contract.mapper.TenantInvitationPersistenceMapper;
+import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
+@Component
 public class TenantInvitationPostgresAdapter implements TenantInvitationRepository {
 
     private final TenantInvitationSpringDataRepository springDataRepository;

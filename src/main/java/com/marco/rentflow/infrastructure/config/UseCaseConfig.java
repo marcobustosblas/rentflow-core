@@ -3,10 +3,17 @@ package com.marco.rentflow.infrastructure.config;
 import com.marco.rentflow.core.application.port.out.NotificationSenderPort;
 import com.marco.rentflow.core.application.port.out.PaymentGatewayPort;
 import com.marco.rentflow.core.application.usecase.contract.*;
+import com.marco.rentflow.core.application.usecase.payment.GetPaymentByIdUseCase;
 import com.marco.rentflow.core.application.usecase.payment.InitiatePaymentCheckoutUseCase;
+import com.marco.rentflow.core.application.usecase.payment.ListPaymentsByContractUseCase;
 import com.marco.rentflow.core.application.usecase.property.*;
+import com.marco.rentflow.core.application.usecase.user.GetUserUseCase;
+import com.marco.rentflow.core.application.usecase.user.RegisterUserUseCase;
 import com.marco.rentflow.core.domain.bankaccount.ports.out.BankAccountRepository;
+import com.marco.rentflow.core.domain.common.ports.out.DomainEventPublisher;
+import com.marco.rentflow.core.domain.common.ports.out.TokenHasher;
 import com.marco.rentflow.core.domain.contract.ports.out.ContractRepository;
+import com.marco.rentflow.core.domain.contract.ports.out.TenantInvitationRepository;
 import com.marco.rentflow.core.domain.payment.ports.out.PaymentRepository;
 import com.marco.rentflow.core.domain.property.ports.out.PropertyRepository;
 import com.marco.rentflow.core.domain.subscription.ports.out.SubscriptionRepository;
@@ -77,9 +84,11 @@ public class UseCaseConfig {
     public CreateContractUseCase createContractUseCase(
             PropertyRepository propertyRepository,
             ContractRepository contractRepository,
-            UserRepository userRepository) {
+            TenantInvitationRepository tenantInvitationRepository,
+            TokenHasher tokenHasher,
+            DomainEventPublisher eventPublisher) {
         // Spring automáticamente inyectará el ContractPostgresAdapter aquí
-        return new CreateContractUseCase(propertyRepository, contractRepository, userRepository);
+        return new CreateContractUseCase(propertyRepository, contractRepository, tenantInvitationRepository, tokenHasher, eventPublisher);
     }
 
     @Bean
@@ -104,5 +113,49 @@ public class UseCaseConfig {
         return new TerminateContractUseCase(contractRepository, propertyRepository);
     }
 
+    @Bean
+    public RegisterTenantUseCase registerTenantUseCase(
+            UserRepository userRepository,
+            TenantInvitationRepository invitationRepository,
+            ContractRepository contractRepository,
+            PropertyRepository propertyRepository,
+            TokenHasher tokenHasher) {
+        return new RegisterTenantUseCase(
+                userRepository, invitationRepository,
+                contractRepository, propertyRepository, tokenHasher);
+    }
+
+    @Bean
+    public GetInvitationUseCase getInvitationUseCase (
+            TenantInvitationRepository tenantInvitationRepository,
+            ContractRepository contractRepository,
+            PropertyRepository propertyRepository,
+            TokenHasher tokenHasher) {
+        return new GetInvitationUseCase(
+                tenantInvitationRepository, contractRepository, propertyRepository, tokenHasher);
+    }
+
+    @Bean
+    public GetPaymentByIdUseCase getPaymentByIdUseCase(PaymentRepository paymentRepository) {
+        return new GetPaymentByIdUseCase(paymentRepository);
+    }
+
+    @Bean
+    public ListPaymentsByContractUseCase listPaymentsByContractUseCase(PaymentRepository paymentRepository) {
+        return new ListPaymentsByContractUseCase(paymentRepository);
+    }
+
+    /* USER USE CASES */
+
+    /* 7-10, 10:43 am User */
+    @Bean
+    public RegisterUserUseCase registerUserUseCase (UserRepository userRepository) {
+        return new RegisterUserUseCase(userRepository);
+    }
+
+    @Bean
+    public GetUserUseCase getUserUseCase(UserRepository userRepository) {
+        return new GetUserUseCase(userRepository);
+    }
 
 }

@@ -17,6 +17,8 @@ public class TenantInvitationPersistenceMapper {
                 domain.getContractId(),
                 domain.getLandlordId(),
                 domain.getTenantEmail(),
+                domain.getTenantFullName(), // new
+                domain.getTenantRut(),  // new
                 domain.getTokenHash(),
                 DateConverter.toZonedDateTime(domain.getExpiresAt()),
                 domain.getStatus().name(),
@@ -33,6 +35,8 @@ public class TenantInvitationPersistenceMapper {
                 entity.getContractId(),
                 entity.getLandlordId(),
                 entity.getTenantEmail(),
+                entity.getTenantFullName(),   // ← nuevo
+                entity.getTenantRut(),        // ← nuevo
                 entity.getTokenHash(),
                 entity.getExpiresAt().toLocalDateTime(),
                 InvitationStatus.valueOf(entity.getStatus()),

@@ -2,11 +2,12 @@ package com.marco.rentflow.infrastructure.adapters.in.web.contract;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.marco.rentflow.core.application.usecase.contract.CreateContractUseCase;
+import com.marco.rentflow.core.application.usecase.contract.*;
 import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.core.domain.common.Money;
-import com.marco.rentflow.core.domain.contract.RentalContract;
+import com.marco.rentflow.core.domain.contract.*;
 import com.marco.rentflow.infrastructure.adapters.in.web.contract.dto.ContractRequestDTO;
+import com.marco.rentflow.infrastructure.adapters.in.web.contract.mapper.ContractRestMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -21,7 +22,6 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -37,45 +37,63 @@ class ContractControllerTest {
     @MockBean
     private CreateContractUseCase createContractUseCase;
 
+    @MockBean
+    private GetContractUseCase getContractUseCase;
+
+    @MockBean
+    private ListContractsByLandlordUseCase listContractsByLandlordUseCase;
+
+    @MockBean
+    private ListContractsByTenantUseCase listContractsByTenantUseCase;
+
+    @MockBean
+    private TerminateContractUseCase terminateContractUseCase;
+
+    @MockBean
+    private ContractRestMapper mapper;
+
     @BeforeEach
     void setup() {
-        // Registra el módulo de fechas para que Jackson sepa convertir LocalDate a JSON
         objectMapper.registerModule(new JavaTimeModule());
     }
 
     @Test
     void createContract_ShouldReturn201Created() throws Exception {
-        // 1. Instanciar el Record pasando todo por el constructor (sin setters)
+        UUID propertyId = UUID.randomUUID();
+        UUID landlordId = UUID.randomUUID();
+
         ContractRequestDTO requestDTO = new ContractRequestDTO(
-                UUID.randomUUID(),                  // propertyId
-                UUID.randomUUID(),                  // tenantId
-                UUID.randomUUID(),                  // landlordId
-                new BigDecimal("500000"),       // monthlyRentAmount
-                new BigDecimal("500000"),       // depositAmount
-                "CLP",                              // currency
-                5,                                  // paymentDueDay
-                new BigDecimal("0.01"),         // dailyPenaltyRate
-                LocalDate.now(),                    // startDate
-                LocalDate.now().plusYears(1)        // endDate
+                propertyId,
+                landlordId,
+                "tenant@test.com",
+                "Tenant Name",
+                "12345678-9",
+                new BigDecimal("500000"),
+                new BigDecimal("500000"),
+                "CLP",
+                5,
+                new BigDecimal("0.01"),
+                LocalDate.now().plusDays(1),
+                LocalDate.now().plusYears(1),
+                "http://doc.pdf",
+                "MANUAL"
         );
 
-        // 2. Extraer usando métodos planos (sin 'get')
-        RentalContract mockContract = RentalContract.create(
-                requestDTO.propertyId(),
-                requestDTO.tenantId(),
-                requestDTO.landlordId(),
-                new Money(requestDTO.monthlyRentAmount(), Currency.CLP),
-                new Money(requestDTO.depositAmount(), Currency.CLP),
-                requestDTO.paymentDueDay(),
-                requestDTO.dailyPenaltyRate(),
-                requestDTO.startDate(),
-                requestDTO.endDate()
+        TenantInfo tenantInfo = new TenantInfo(UUID.randomUUID(), "tenant@test.com", "Tenant Name", "12345678-9");
+        FinancialTerms terms = new FinancialTerms(
+                new Money(new BigDecimal("500000"), Currency.CLP),
+                new Money(new BigDecimal("500000"), Currency.CLP),
+                5,
+                new BigDecimal("0.01")
         );
 
-        Mockito.when(createContractUseCase.execute(
-                        any(), any(), any(),
-                        any(), any(), anyInt(),
-                        any(), any(), any()))
+        RentalContract mockContract = RentalContract.register(
+                propertyId, landlordId, tenantInfo, terms,
+                requestDTO.startDate(), requestDTO.endDate(),
+                requestDTO.contractDocumentUrl(), ContractSource.MANUAL
+        );
+
+        Mockito.when(createContractUseCase.execute(any(CreateContractCommand.class)))
                 .thenReturn(mockContract);
 
         mockMvc.perform(post("/api/v1/contracts")

@@ -28,6 +28,7 @@ public class RentalContract {
     private Money depositAmount; // Mes de Garantía (pago único inicial)
     private int paymentDueDay; // Día del mes en que vence el arriendo
     private BigDecimal dailyPenaltyRate; // = new BigDecimal("0.01"); 1% diario
+
     private LocalDate startDate;
     private LocalDate endDate;
     private ContractStatus status;
@@ -38,19 +39,15 @@ public class RentalContract {
 
 
     // 1. CONSTRUCTOR PRIVADO (El Guardián Absoluto)
+    // Accepts VOs instead of loose parameters to reduce coupling
+    // and leverage the validation performed inside each VO.
     private RentalContract(UUID id,
                            UUID propertyId,
                            UUID landlordId,
-                           UUID tenantId,
-                           String tenantEmail,
-                           String tenantFullName,
-                           String tenantRut,
+                           TenantInfo tenant,
                            String contractDocumentUrl,
                            ContractSource source,
-                           Money monthlyRent,
-                           Money depositAmount,
-                           int paymentDueDay,
-                           BigDecimal dailyPenaltyRate,
+                           FinancialTerms terms,
                            LocalDate startDate,
                            LocalDate endDate,
                            ContractStatus status,
@@ -61,25 +58,24 @@ public class RentalContract {
         this.id = Objects.requireNonNull(id, "Contract ID cannot be null");
         this.propertyId = Objects.requireNonNull(propertyId, "Property ID cannot be null");
         this.landlordId = Objects.requireNonNull(landlordId, "Landlord ID cannot be null");
-        this.tenantId = tenantId; // nullable until tenant accepts
-        this.tenantEmail = Objects.requireNonNull(tenantEmail, "Tenant email cannot be null");
-        this.tenantFullName = Objects.requireNonNull(tenantFullName, "Tenant full name cannot be null");
-        this.tenantRut = Objects.requireNonNull(tenantRut, "Tenant RUT cannot be null");
+
+        Objects.requireNonNull(tenant, "TenantInfo cannot be null");
+        this.tenantId = tenant.tenantId(); // nullable until tenant accepts
+        this.tenantEmail = tenant.tenantEmail();
+        this.tenantFullName = tenant.tenantFullName();
+        this.tenantRut = tenant.tenantRut();
+
         this.contractDocumentUrl = contractDocumentUrl; // Puede ser null si es MANUAL
         this.source = Objects.requireNonNull(source, "Contract source cannot be null");
-        this.monthlyRent = Objects.requireNonNull(monthlyRent, "Monthly rent cannot be null");
-        this.depositAmount = Objects.requireNonNull(depositAmount, "Deposit amount cannot be null");
 
-        Objects.requireNonNull(dailyPenaltyRate, "Penalty rate cannot be null");
-        if (dailyPenaltyRate.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Penalty rate cannot be negative");
-        }
-        this.dailyPenaltyRate = dailyPenaltyRate;
+        Objects.requireNonNull(terms, "FinancialTerms cannot be null");
+        this.monthlyRent = terms.monthlyRent();
+        this.depositAmount = terms.depositAmount();
+        this.paymentDueDay = terms.paymentDueDay();
+        this.dailyPenaltyRate = terms.dailyPenaltyRate();
 
         validateRentalPeriodHasMinimumOneMonth(startDate, endDate);
-        validateDepositLimit(monthlyRent, depositAmount);
 
-        this.paymentDueDay = validatePaymentDueDay(paymentDueDay);
         this.startDate = startDate;
         this.endDate = endDate;
         this.status = Objects.requireNonNull(status, "Contract status cannot be null");
@@ -89,13 +85,15 @@ public class RentalContract {
     }
 
     // 2. FACTORY: register a new contract from an already-signed legal document
-    public static RentalContract create(UUID propertyId, UUID landlordId,
-                                        TenantInfo tenant,
-                                        FinancialTerms terms,
-                                        LocalDate startDate,
-                                        LocalDate endDate,
-                                        String contractDocumentUrl,
-                                        ContractSource source) {
+    public static RentalContract register(
+            UUID propertyId,
+            UUID landlordId,
+            TenantInfo tenant,
+            FinancialTerms terms,
+            LocalDate startDate,
+            LocalDate endDate,
+            String contractDocumentUrl,
+            ContractSource source) {
 
         Objects.requireNonNull(tenant, "TenantInfo cannot be null");
         Objects.requireNonNull(terms, "FinancialTerms cannot be null");
@@ -109,17 +107,12 @@ public class RentalContract {
                 UUID.randomUUID(),
                 propertyId,
                 landlordId,
-                tenant.tenantId(),
-                tenant.tenantEmail(),
-                tenant.tenantFullName(),
-                tenant.tenantRut(),
+                tenant,
                 contractDocumentUrl,
                 source,
-                terms.monthlyRent(),
-                terms.depositAmount(),
-                terms.paymentDueDay(),
-                terms.dailyPenaltyRate(),
-                startDate, endDate,
+                terms,
+                startDate,
+                endDate,
                 initialStatus,
                 LocalDateTime.now(),
                 LocalDateTime.now(),
@@ -129,7 +122,7 @@ public class RentalContract {
 
     // FACTORY: reconstitute from persistence, PARA MAPEO DE BD
     // MUST only be called by the persistence adapter (Capa de Infraestructura).
-
+    // Se mantuvo con parámetros flexibles para evitar la validación durante la rehidratación.
     public static RentalContract reconstitute(UUID id,
                                               UUID propertyId,
                                               UUID landlordId,
@@ -150,12 +143,11 @@ public class RentalContract {
                                               LocalDateTime updatedAt,
                                               LocalDate lastReadjustmentDate) {
 
-        return new RentalContract(
-                id, propertyId, landlordId, tenantId, tenantEmail, tenantFullName,
-                tenantRut, contractDocumentUrl, source, monthlyRent,
-                depositAmount, paymentDueDay, dailyPenaltyRate, startDate, endDate,
-                status, createdAt, updatedAt, lastReadjustmentDate
-        );
+        TenantInfo tenant = new TenantInfo(tenantId, tenantEmail, tenantFullName, tenantRut);
+        FinancialTerms terms = new FinancialTerms(monthlyRent, depositAmount, paymentDueDay, dailyPenaltyRate);
+
+        return new RentalContract(id, propertyId, landlordId, tenant, contractDocumentUrl, source,
+                terms, startDate, endDate, status, createdAt, updatedAt, lastReadjustmentDate);
     }
 
     /** Tenant assignment
@@ -282,7 +274,8 @@ public class RentalContract {
         return this.status == ContractStatus.ACTIVE;
     }
 
-    /**/
+    // --- Expiration helpers ---
+
     public long getRemainingMonths() {
         if (LocalDate.now().isAfter(this.endDate)) {
             return 0;
@@ -293,12 +286,13 @@ public class RentalContract {
     public boolean isAboutToExpire(int monthsThreshold) {
         return getRemainingMonths() <= monthsThreshold;
     }
-    /**/
 
 
     // INVARIANTES PRIVADAS DE NEGOCIO
 
     private static void validateRentalPeriodHasMinimumOneMonth(LocalDate start, LocalDate end) {
+        Objects.requireNonNull(start, "Start date cannot be null");
+        Objects.requireNonNull(end, "End date cannot be null");
         if (end.isBefore(start)) {
             throw new IllegalArgumentException("End date cannot be before start date");
         }
@@ -306,24 +300,6 @@ public class RentalContract {
         if (months < 1) {
             throw new IllegalArgumentException("Contract must be for at least 1 month");
         }
-    }
-
-    // Validar que se calcule 2 meses de arriendo (mes + mes garantía)
-    private static void validateDepositLimit(Money rent, Money deposit) {
-        if (rent.getCurrency() != deposit.getCurrency()) {
-            throw new IllegalArgumentException("Rent and deposit must use the same currency");
-        }
-        Money twoMonthsRent = rent.multiply(BigDecimal.valueOf(2));
-        if (deposit.isGreaterThan(twoMonthsRent)) {
-            throw new IllegalArgumentException("Deposit cannot exceed 2 months of rent");
-        }
-    }
-
-    private static int validatePaymentDueDay(int day) {
-        if (day < 1 || day > 31) {
-            throw new IllegalArgumentException("Payment due day must be between 1 and 31");
-        }
-        return day;
     }
 
     // Calculate IPC
@@ -374,8 +350,8 @@ public class RentalContract {
 
     @Override
     public String toString() {
-        return String.format("{id=%s, property=%s, tenant=%s, rent=%s, status=%s}",
-                id, propertyId, tenantId, monthlyRent, status);
+        return String.format("{id=%s, property=%s, tenant=%s, tenantEmail=%s, rent=%s, status=%s}",
+                id, propertyId, tenantId, tenantEmail, monthlyRent, status);
     }
 
     // GETTERS

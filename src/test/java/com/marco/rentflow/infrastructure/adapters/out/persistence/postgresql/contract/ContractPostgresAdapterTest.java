@@ -2,47 +2,63 @@ package com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.co
 
 import com.marco.rentflow.core.domain.common.Currency;
 import com.marco.rentflow.core.domain.common.Money;
+import com.marco.rentflow.core.domain.contract.ContractSource;
 import com.marco.rentflow.core.domain.contract.ContractStatus;
+import com.marco.rentflow.core.domain.contract.FinancialTerms;
 import com.marco.rentflow.core.domain.contract.RentalContract;
+import com.marco.rentflow.core.domain.contract.TenantInfo;
 import com.marco.rentflow.core.domain.property.Property;
 import com.marco.rentflow.core.domain.user.Role;
 import com.marco.rentflow.core.domain.user.User;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.AbstractIntegrationTest;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.property.PropertyPostgresAdapter;
 import com.marco.rentflow.infrastructure.adapters.out.persistence.postgresql.user.UserPostgresAdapter;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Transactional
 public class ContractPostgresAdapterTest extends AbstractIntegrationTest {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private ContractPostgresAdapter contractPostgresAdapter;
 
-    // se agrego esto para persistir previamente el Landlord, Tenant y Property requeridos por las claves foraneas (FKs) en la tabla contracts
     @Autowired
     private UserPostgresAdapter userPostgresAdapter;
 
     @Autowired
     private PropertyPostgresAdapter propertyPostgresAdapter;
 
+    @BeforeEach
+    void cleanDatabase() {
+        jdbcTemplate.execute("TRUNCATE TABLE tenant_invitations CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE contracts CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE properties CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE users CASCADE");
+    }
+
     private User createAndPersistUser(String email, Role role) {
+        String uniqueRut = String.format("%08d-5", Math.abs(email.hashCode()) % 100_000_000);
         User user = User.registerNew(
+                "Usuario Test",
                 email,
                 "password_hash_123",
-                "Usuario Test",
-                "12345678-5",
+                uniqueRut,
                 "+56912345678",
-                role
+                Set.of(role)
         );
         return userPostgresAdapter.save(user);
     }
@@ -53,10 +69,29 @@ public class ContractPostgresAdapterTest extends AbstractIntegrationTest {
         return propertyPostgresAdapter.save(property);
     }
 
+    private RentalContract createContract(Property property, User landlord, User tenant, Money rent, Money deposit, int dueDay, LocalDate start, LocalDate end) {
+        TenantInfo tenantInfo = new TenantInfo(
+                tenant.getId(),
+                tenant.getEmail(),
+                tenant.getFullName(),
+                tenant.getRut());
+        FinancialTerms terms = new FinancialTerms(rent, deposit, dueDay, new BigDecimal("0.01"));
+        return RentalContract.register(
+                property.getId(),
+                landlord.getId(),
+                tenantInfo,
+                terms,
+                start,
+                end,
+                null,
+                ContractSource.MANUAL
+        );
+    }
+
     @Test
     @DisplayName("Debe guardar un contrato de arriendo en PostgreSQL y recuperarlo con sus atributos intactos")
     void shouldSaveAndRetrieveContract() {
-        // Arrange - persistir entidades dependientes por FK
+        // Arrange
         User landlord = createAndPersistUser("landlord.contract@rentflow.com", Role.LANDLORD);
         User tenant = createAndPersistUser("tenant.contract@rentflow.com", Role.TENANT);
         Property property = createAndPersistProperty(landlord, "Av. Siempre Viva 742");
@@ -66,21 +101,12 @@ public class ContractPostgresAdapterTest extends AbstractIntegrationTest {
         LocalDate start = LocalDate.now();
         LocalDate end = start.plusYears(1);
 
-        RentalContract newContract = RentalContract.create(
-                property.getId(),
-                tenant.getId(),
-                landlord.getId(),
-                rent,
-                deposit,
-                5, // due day
-                start,
-                end
-        );
+        RentalContract newContract = createContract(property, landlord, tenant, rent, deposit, 5, start, end);
 
         // Act
         RentalContract savedContract = contractPostgresAdapter.save(newContract);
 
-        // Assert - se agrego esto para validar la persistencia e integridad referencial en PostgreSQL real
+        // Assert
         assertThat(savedContract).isNotNull();
         assertThat(savedContract.getId()).isNotNull();
 
@@ -112,13 +138,13 @@ public class ContractPostgresAdapterTest extends AbstractIntegrationTest {
         LocalDate start = LocalDate.now();
         LocalDate end = start.plusMonths(6);
 
-        RentalContract contract1 = RentalContract.create(prop1.getId(), tenant.getId(), landlord.getId(), rent, deposit, 1, start, end);
-        RentalContract contract2 = RentalContract.create(prop2.getId(), tenant.getId(), landlord.getId(), rent, deposit, 1, start, end);
+        RentalContract contract1 = createContract(prop1, landlord, tenant, rent, deposit, 1, start, end);
+        RentalContract contract2 = createContract(prop2, landlord, tenant, rent, deposit, 1, start, end);
 
         contractPostgresAdapter.save(contract1);
         contractPostgresAdapter.save(contract2);
 
-        // Act - se agrego esto para comprobar el filtrado por ID de inquilino (tenantId)
+        // Act
         List<RentalContract> contracts = contractPostgresAdapter.findByTenantId(tenant.getId());
 
         // Assert
@@ -138,15 +164,14 @@ public class ContractPostgresAdapterTest extends AbstractIntegrationTest {
         LocalDate start = LocalDate.now();
         LocalDate end = start.plusYears(2);
 
-        RentalContract contract = RentalContract.create(property.getId(), tenant.getId(), landlord.getId(), rent, deposit, 10, start, end);
+        RentalContract contract = createContract(property, landlord, tenant, rent, deposit, 10, start, end);
         contractPostgresAdapter.save(contract);
 
-        // Act - se agrego esto para validar la consulta relacional property.landlord.id
+        // Act
         List<RentalContract> contracts = contractPostgresAdapter.findByPropertyLandlordId(landlord.getId());
 
         // Assert
         assertThat(contracts).hasSize(1);
-        // se agrego esto para acceder al primer elemento mediante get(0) asegurando compatibilidad en la aserción
         assertThat(contracts.get(0).getLandlordId()).isEqualTo(landlord.getId());
     }
 }
